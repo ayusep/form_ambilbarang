@@ -1,194 +1,224 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CreateRequest = () => {
-  const [items, setItems] = useState([]);
-  const [selectedItem, setSelectedItem] = useState("");
-  const [qty, setQty] = useState(1);
+const CreateRequest = ({ user }) => {
+  const [tujuan, setTujuan] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [results, setResults] = useState([]);
   const [cart, setCart] = useState([]);
-  const [purpose, setPurpose] = useState("");
-  const [note, setNote] = useState(""); // State baru untuk kolom keterangan
+  const [qty, setQty] = useState(1);
+  const [selectedBarang, setSelectedBarang] = useState(null);
 
-  const getItems = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/barang');
-      const data = await response.json();
-      setItems(data);
-    } catch (err) {
-      console.error("Gagal ambil barang:", err);
-    }
-  };
-
+  // 1. Logic Search Barang (Live Search)
   useEffect(() => {
-    getItems();
-  }, []);
-
-  const addItem = () => {
-    if (!selectedItem) {
-      alert("Pilih barang dulu!");
-      return;
-    }
-
-    const itemDetail = items.find(i => i.id_barang === Number(selectedItem));
-
-    if (qty <= 0) {
-      alert("Jumlah harus lebih dari 0");
-      return;
-    }
-
-    const newItem = {
-      id_barang: itemDetail.id_barang,
-      nama_barang: itemDetail.nama_barang,
-      harga_sap: itemDetail.harga_sap,
-      qty: Number(qty),
-      subtotal: Number(itemDetail.harga_sap) * Number(qty)
+    const fetchBarang = async () => {
+      if (searchTerm.length > 1 && !selectedBarang) {
+        try {
+          const response = await fetch(`http://localhost:5000/api/barang/search?q=${searchTerm}`);
+          const data = await response.json();
+          setResults(data);
+        } catch (err) {
+          console.error("Gagal mengambil data search:", err);
+        }
+      } else {
+        setResults([]);
+      }
     };
 
-    setCart(prev => [...prev, newItem]);
-    setSelectedItem("");
+    fetchBarang();
+  }, [searchTerm, selectedBarang]);
+
+  // 2. Logika Tambah ke Keranjang
+  const addToCart = () => {
+    if (!selectedBarang) return alert("Pilih barang dari rekomendasi!");
+    if (qty <= 0) return alert("Jumlah (Qty) harus lebih dari 0!");
+    if (qty > selectedBarang.stok) return alert(`Stok tidak mencukupi! Sisa stok: ${selectedBarang.stok}`);
+
+    const harga = parseFloat(selectedBarang.harga_sap);
+    const jumlah = parseInt(qty);
+
+    const newItem = {
+      id_barang: selectedBarang.id_barang,
+      kode_sap: selectedBarang.kode_sap,
+      nama_barang: selectedBarang.nama_barang,
+      harga_sap: harga,
+      qty: jumlah,
+      total_baris: harga * jumlah // Kalkulasi per baris
+    };
+
+    setCart([...cart, newItem]);
+    
+    // Reset form input barang
+    setSearchTerm("");
+    setSelectedBarang(null);
     setQty(1);
   };
 
-  const submitRequest = async () => {
-    if (!purpose || cart.length === 0) {
-      alert("Tujuan dan daftar barang tidak boleh kosong!");
-      return;
-    }
+  // 3. Hitung Grand Total
+  const grandTotal = cart.reduce((sum, item) => sum + item.total_baris, 0);
+
+  // 4. Simpan ke Database
+  const handleSimpan = async () => {
+    if (!tujuan) return alert("Harap isi tujuan penggunaan!");
+    if (cart.length === 0) return alert("Keranjang masih kosong!");
 
     try {
       const response = await fetch('http://localhost:5000/api/permintaan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id_user: 1, 
-          tujuan: purpose,
-          keterangan: note, // Menambah keterangan sesuai DB
-          status_approval: "Pending", // Default status sesuai kolom DB
+          id_user: user.id_user,
+          tujuan: tujuan, // Masuk ke kolom 'keterangan' di backend
           items: cart
         })
       });
 
       if (response.ok) {
-        alert("Form Ambil Barang (FAB) Berhasil Dikirim!");
+        alert("✅ Berhasil menyimpan Transaksi FAB!");
         setCart([]);
-        setPurpose("");
-        setNote("");
+        setTujuan("");
+      } else {
+        const errorData = await response.json();
+        alert("Gagal simpan: " + errorData.error);
       }
     } catch (err) {
-      console.error(err);
+      alert("Terjadi kesalahan koneksi ke server.");
     }
   };
 
-  const removeCartItem = (index) => {
-    const newCart = [...cart];
-    newCart.splice(index, 1);
-    setCart(newCart);
-  };
-
-  const total = cart.reduce((a, b) => a + b.subtotal, 0);
-
   return (
-    <>
-      <header style={{ marginBottom: '30px' }}>
-        <h1>📝 Form Ambil Barang (FAB)</h1>
-        <p>Silakan isi detail kebutuhan barang inventaris di bawah ini.</p>
-      </header>
+    <div style={{ padding: '20px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+      <h2 style={{ marginBottom: '20px', color: '#2c3e50', borderBottom: '2px solid #3498db', paddingBottom: '10px' }}>
+        📝 Form Ambil Barang (FAB)
+      </h2>
 
-      <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '30px' }}>
-        <h3>Detail Permintaan</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          
-          <input
-            style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }}
-            type="text"
-            placeholder="Tujuan Permintaan (Contoh: Event Marketing)"
-            value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
-          />
-
-          {/* Input Keterangan Baru */}
-          <textarea
-            style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd', minHeight: '80px', fontFamily: 'Arial' }}
-            placeholder="Keterangan tambahan (Opsional)"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-
-          <div style={{ display: 'flex', gap: '10px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-            <select 
-              style={{ padding: '10px', flex: 2, borderRadius: '4px', border: '1px solid #ddd' }}
-              value={selectedItem}
-              onChange={(e) => setSelectedItem(e.target.value)}
-            >
-              <option value="">-- Pilih Barang --</option>
-              {items.map(i => (
-                <option key={i.id_barang} value={i.id_barang}>
-                  {i.nama_barang} (Stok: {i.stok} {i.satuan})
-                </option>
-              ))}
-            </select>
-
-            <input
-              style={{ padding: '10px', flex: 1, borderRadius: '4px', border: '1px solid #ddd' }}
-              type="number"
-              placeholder="Qty"
-              min="1"
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-            />
-
-            <button 
-              onClick={addItem}
-              style={{ padding: '10px 25px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              Tambah Barang
-            </button>
-          </div>
-        </div>
+      {/* Field Tujuan */}
+      <div style={{ marginBottom: '20px' }}>
+        <label style={{ fontWeight: 'bold' }}>Tujuan Penggunaan:</label>
+        <input 
+          type="text" 
+          value={tujuan} 
+          onChange={(e) => setTujuan(e.target.value)}
+          placeholder="Masukkan tujuan (misal: Maintenance Mesin A)"
+          style={{ width: '100%', padding: '10px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+        />
       </div>
 
-      <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '2px solid #eee' }}>
-              <th style={{ padding: '12px' }}>Nama Barang</th>
-              <th style={{ padding: '12px' }}>Harga</th>
-              <th style={{ padding: '12px' }}>Qty</th>
-              <th style={{ padding: '12px' }}>Subtotal</th>
-              <th style={{ padding: '12px' }}>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cart.length > 0 ? (
-              cart.map((c, index) => (
-                <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '12px' }}>{c.nama_barang}</td>
-                  <td style={{ padding: '12px' }}>Rp {Number(c.harga_sap).toLocaleString('id-ID')}</td>
-                  <td style={{ padding: '12px' }}>{c.qty}</td>
-                  <td style={{ padding: '12px' }}>Rp {c.subtotal.toLocaleString('id-ID')}</td>
-                  <td style={{ padding: '12px' }}>
-                    <button onClick={() => removeCartItem(index)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}>Batal</button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#888' }}>Keranjang FAB masih kosong.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* Search & Qty Section */}
+      <div style={{ display: 'flex', gap: '10px', position: 'relative', marginBottom: '30px' }}>
+        <div style={{ flex: 3 }}>
+          <label style={{ fontWeight: 'bold' }}>Cari Barang (SAP / Nama):</label>
+          <input 
+            type="text" 
+            value={searchTerm} 
+            onChange={(e) => { setSearchTerm(e.target.value); setSelectedBarang(null); }}
+            placeholder="Ketik minimal 2 huruf..."
+            style={{ width: '100%', padding: '10px', marginTop: '5px', borderRadius: '4px', border: '1px solid #3498db', boxSizing: 'border-box' }}
+          />
+          
+          {/* Dropdown Hasil Search */}
+          {results.length > 0 && (
+            <div style={{ position: 'absolute', zIndex: 100, background: 'white', border: '1px solid #ddd', width: '100%', borderRadius: '4px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
+              {results.map(b => (
+                <div 
+                  key={b.id_barang} 
+                  onClick={() => { 
+                    setSelectedBarang(b); 
+                    setSearchTerm(`${b.kode_sap} - ${b.nama_barang}`); 
+                    setResults([]); 
+                  }}
+                  style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#f1f2f6'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = 'white'}
+                >
+                  <strong>{b.kode_sap}</strong> - {b.nama_barang} (Stok: {b.stok}) - Rp {Number(b.harga_sap).toLocaleString('id-ID')}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid #eee', paddingTop: '20px' }}>
-          <h2 style={{ color: '#2c3e50' }}>Total Estimasi: Rp {total.toLocaleString('id-ID')}</h2>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontWeight: 'bold' }}>Qty:</label>
+          <input 
+            type="number" 
+            value={qty} 
+            onChange={(e) => setQty(e.target.value)}
+            style={{ width: '100%', padding: '10px', marginTop: '5px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+          />
+        </div>
+
+        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
           <button 
-            onClick={submitRequest}
-            style={{ padding: '12px 30px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}
+            onClick={addToCart}
+            style={{ width: '100%', padding: '10px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
           >
-            Simpan & Kirim FAB
+            Tambah
           </button>
         </div>
       </div>
-    </>
+
+      {/* Tabel Keranjang */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+        <thead>
+          <tr style={{ backgroundColor: '#2c3e50', color: 'white' }}>
+            <th style={{ padding: '12px', border: '1px solid #ddd' }}>Barang</th>
+            <th style={{ padding: '12px', border: '1px solid #ddd' }}>Harga Satuan</th>
+            <th style={{ padding: '12px', border: '1px solid #ddd' }}>Qty</th>
+            <th style={{ padding: '12px', border: '1px solid #ddd' }}>Total</th>
+            <th style={{ padding: '12px', border: '1px solid #ddd' }}>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cart.length === 0 ? (
+            <tr>
+              <td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#888' }}>Belum ada barang di keranjang</td>
+            </tr>
+          ) : (
+            cart.map((item, idx) => (
+              <tr key={idx}>
+                <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                  {item.kode_sap} - {item.nama_barang}
+                </td>
+                <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'right' }}>
+                  Rp {item.harga_sap.toLocaleString('id-ID')}
+                </td>
+                <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center' }}>
+                  {item.qty}
+                </td>
+                <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'right', fontWeight: 'bold' }}>
+                  Rp {item.total_baris.toLocaleString('id-ID')}
+                </td>
+                <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center' }}>
+                  <button 
+                    onClick={() => setCart(cart.filter((_, i) => i !== idx))} 
+                    style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Batal
+                  </button>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+        <tfoot>
+          <tr style={{ backgroundColor: '#f9f9f9', fontWeight: 'bold' }}>
+            <td colSpan="3" style={{ textAlign: 'right', padding: '10px', border: '1px solid #ddd' }}>Grand Total:</td>
+            <td style={{ textAlign: 'right', padding: '10px', color: '#2c3e50', border: '1px solid #ddd' }}>
+              Rp {grandTotal.toLocaleString('id-ID')}
+            </td>
+            <td style={{ border: '1px solid #ddd' }}></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      {/* Tombol Simpan Akhir */}
+      <button 
+        onClick={handleSimpan}
+        style={{ width: '100%', padding: '15px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}
+      >
+        SIMPAN TRANSAKSI FAB
+      </button>
+    </div>
   );
 };
 

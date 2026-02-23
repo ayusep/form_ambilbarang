@@ -2,50 +2,73 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
+// ROUTE: Simpan Permintaan Barang (FAB)
 router.post('/', async (req, res) => {
+  const { id_user, tujuan, items } = req.body;
+  
   try {
-    const { items, keterangan } = req.body;
+    // 1. Ambil No FAB terbaru (Next Number)
+    const lastFabResult = await pool.query('SELECT MAX(no_fab) as max_fab FROM permintaan_barang');
+    const nextFab = (lastFabResult.rows[0].max_fab || 0) + 1;
 
-    if (!items || items.length === 0) {
-      return res.status(400).json({ error: "Keranjang kosong!" });
-    }
-
+    // 2. Loop untuk simpan setiap barang dari keranjang
     for (const item of items) {
-      // Kita pakai query yang SANGAT SEDERHANA dulu untuk tes
-      const query = `
-        INSERT INTO permintaan_barang (id_barang, qty, status_approval, keterangan) 
-        VALUES ($1, $2, $3, $4)
-      `;
-      const values = [item.id_barang, item.qty, 'Pending', keterangan || ''];
-      
-      await pool.query(query, values);
+      await pool.query(
+        `INSERT INTO permintaan_barang (
+          no_fab, 
+          id_barang, 
+          id_user, 
+          qty, 
+          status_approval, 
+          tujuan, 
+          keterangan, 
+          tgl_permintaan
+        ) VALUES ($1, $2, $3, $4, 'Pending', $5, NULL, CURRENT_TIMESTAMP)`,
+        [
+          nextFab, 
+          item.id_barang, 
+          id_user, 
+          item.qty, 
+          tujuan // SEKARANG MASUK KE KOLOM TUJUAN (Urutan ke-5)
+        ]
+      );
     }
 
-    res.status(200).json({ message: "FAB Berhasil Disimpan!" });
+    res.status(200).json({ success: true, message: `FAB #${nextFab} Berhasil disimpan!` });
   } catch (err) {
-    // INI AKAN MUNCUL DI TERMINAL VS CODE KAMU
-    console.error("=== ERROR DATABASE DETECTED ===");
-    console.error("Pesan Error:", err.message);
-    console.error("Detail:", err.detail);
-    console.error("===============================");
-    
-    res.status(500).json({ error: err.message });
+    console.error("Error Simpan Permintaan:", err.message);
+    res.status(500).json({ error: "Gagal simpan transaksi: " + err.message });
   }
 });
 
-// Route GET untuk nampilin data di tabel Data Request
+// ROUTE: Ambil Semua Data untuk Tabel (JOIN DATA)
 router.get('/', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT p.*, b.nama_barang 
-      FROM permintaan_barang p
-      LEFT JOIN barang b ON p.id_barang = b.id_barang
-      ORDER BY p.no_fab DESC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    try {
+      const query = `
+        SELECT 
+          p.id_permintaan,
+          p.no_fab,
+          p.tgl_permintaan,
+          u.nama,
+          d.nama_divisi,
+          b.nama_barang,
+          b.kode_sap,
+          p.qty,
+          p.status_approval,
+          p.tujuan,
+          p.keterangan
+        FROM permintaan_barang p
+        JOIN users u ON p.id_user = u.id_user
+        JOIN divisi d ON u.id_divisi = d.id_divisi
+        JOIN barang b ON p.id_barang = b.id_barang
+        ORDER BY p.no_fab DESC, p.id_permintaan ASC
+      `;
+      const result = await pool.query(query);
+      res.json(result.rows);
+    } catch (err) {
+      console.error("Error Fetch Data:", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
 
 module.exports = router;

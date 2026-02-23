@@ -2,21 +2,23 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
-// Middleware (PENTING: Harus di atas Route)
+// Middleware
 app.use(cors());
-app.use(express.json()); 
+app.use(express.json()); // Penting agar bisa baca body JSON dari Login.jsx
 
-// 1. Import file route-nya
-const divisiRoutes = require('./routes/divisi');
+// 1. IMPORT ROUTES
+const authRoutes = require('./routes/auth'); // Pastikan path-nya benar
 const barangRoutes = require('./routes/barang');
-const permintaanRoutes = require('./routes/permintaan'); // <-- CEK INI
+const divisiRoutes = require('./routes/divisi');
+const permintaanRoutes = require('./routes/permintaan');
 
-// 2. Daftarkan alamat API-nya
-app.use('/api/divisi', divisiRoutes);
+// 2. GUNAKAN ROUTES
+app.use('/api/auth', authRoutes); // Ini akan membuat URL: http://localhost:5000/api/auth/login
 app.use('/api/barang', barangRoutes);
-app.use('/api/permintaan', permintaanRoutes); // <-- ALAMAT INI HARUS PERSIS
+app.use('/api/divisi', divisiRoutes);
+app.use('/api/permintaan', permintaanRoutes);
 
 const PORT = 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server jalan di port ${PORT}`);
 });
