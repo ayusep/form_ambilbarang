@@ -66,7 +66,7 @@ const DataRequest = ({ user, filter }) => {
 
   // Mengubah object ke array dan urutkan berdasarkan no_fab TERBARU (descending)
   const finalData = Object.values(groupedData).sort((a, b) => b.no_fab - a.no_fab);
-
+  
   // 2. LOGIKA TOTAL BUDGET TERPAKAI (Hanya Pending + Approved)
   const totalBudgetTerpakai = finalData.reduce((sum, fab) => {
     if (['Pending', 'Approved'].includes(fab.status_approval)) {
@@ -87,13 +87,13 @@ const DataRequest = ({ user, filter }) => {
 
     // C. Global Search (Semua data)
     const tglFormatted = new Date(fab.tgl_permintaan).toLocaleDateString('id-ID');
-    const matchesSearch =
-      fab.no_fab.toString().includes(searchTerm) ||
+    const matchesSearch = 
+      fab.no_fab.toString().includes(searchTerm) || 
       fab.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fab.nama_divisi?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fab.mesin?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tglFormatted.includes(searchTerm);
-
+    
     return matchesStatus && matchesSearch;
   });
 
@@ -120,14 +120,14 @@ const DataRequest = ({ user, filter }) => {
       <header style={s.header}>
         <div>
           <h2 style={{ color: '#2c3e50', margin: 0 }}>📋 Data Request {filter.bulan}/{filter.tahun}</h2>
-          <small style={{ color: '#7f8c8d' }}>Role: <span style={{ fontWeight: 'bold', color: '#2980b9' }}>{user?.role?.toUpperCase()}</span></small>
+          <small style={{ color: '#7f8c8d' }}>Role: <span style={{fontWeight:'bold', color: '#2980b9'}}>{user?.role?.toUpperCase()}</span></small>
         </div>
-
+        
         <div style={{ display: 'flex', gap: '10px' }}>
           {/* FILTER STATUS DROPDOWN */}
-          <select
-            style={s.selectFilter}
-            value={statusFilter}
+          <select 
+            style={s.selectFilter} 
+            value={statusFilter} 
             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
           >
             <option value="All">Semua Status</option>
@@ -137,9 +137,9 @@ const DataRequest = ({ user, filter }) => {
             <option value="Closed">Closed</option>
           </select>
 
-          <input
-            type="text"
-            placeholder="Cari FAB, Nama, Divisi..."
+          <input 
+            type="text" 
+            placeholder="Cari FAB, Nama, Divisi..." 
             style={s.searchInput}
             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
           />
@@ -179,7 +179,7 @@ const DataRequest = ({ user, filter }) => {
                 <td style={s.td}>
                   <span style={{ ...s.badge, backgroundColor: getBadgeColor(fab.status_approval) }}>{fab.status_approval}</span>
                 </td>
-
+                
                 {/* LOGIKA TOMBOL AKSI BERDASARKAN ROLE */}
                 {user?.role !== 'operasional' && (
                   <td style={s.td}>

@@ -138,7 +138,7 @@ const CreateRequest = ({ user }) => {
             <div style={s.dropdown}>
               {results.map(b => (
                 <div key={b.id_barang} onClick={() => { setSelectedBarang(b); setSearchTerm(`${b.kode_sap} - ${b.nama_barang}`); setResults([]); }} style={s.dropdownItem}>
-                  {b.kode_sap} - {b.nama_barang} (Rp {parseFloat(b.harga_sap) .toLocaleString('id-ID')}) - {b.stok} {b.satuan}
+                  {b.kode_sap} - {b.nama_barang} (Rp {parseFloat(b.harga_sap).toLocaleString('id-ID')})
                 </div>
               ))}
             </div>

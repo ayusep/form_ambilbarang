@@ -86,7 +86,7 @@ const Register = () => {
         </div>
 
         <div style={styles.labelGroup}>
-          <label style={styles.label}>Divisi:</label>
+          <label style={styles.label}>Departemen:</label>
           <select 
             style={styles.input} 
             required 

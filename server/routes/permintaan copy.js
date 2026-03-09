@@ -4,7 +4,7 @@ const pool = require('../db');
 
 // 1. SIMPAN PERMINTAAN (POST) - Format YYMMNN
 router.post('/', async (req, res) => {
-  const { id_user, id_divisi, mesin, operator_maintenance, coa, items } = req.body;
+  const { id_user, mesin, operator_maintenance, coa, items } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -16,7 +16,7 @@ router.post('/', async (req, res) => {
 
     const lastFabResult = await client.query(
       `SELECT MAX(no_fab) as max_fab FROM permintaan_barang WHERE CAST(no_fab AS TEXT) LIKE $1`, 
-      [`${yy}%`]
+      [`${prefix}%`]
     );
 
     let nextFab;
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
       await client.query(
         `INSERT INTO permintaan_barang (no_fab, id_barang, id_user, qty, status_approval, mesin, operator_maintenance, coa, tgl_permintaan) 
          VALUES ($1, $2, $3, $4, 'Pending', $5, $6, $7, CURRENT_TIMESTAMP)`,
-        [nextFab, item.id_barang, id_user, item.qty, mesin, operator_maintenance, coa]
+        [nextFab, item.id_barang, id_user, id_divisi, item.qty, mesin, operator_maintenance, coa]
       );
     }
 
@@ -40,51 +40,30 @@ router.post('/', async (req, res) => {
     res.status(200).json({ success: true, message: `FAB #${nextFab} Berhasil disimpan!`, no_fab: nextFab });
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error(err.message);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
   }
 });
 
-// 2. FILTER DATA (GET) - Diperbarui untuk mendukung akses multi-divisi
+// 2. FILTER DATA (GET)
 router.get('/filter', async (req, res) => {
   const { bulan, tahun, divisi } = req.query;
-  
   try {
-    let query;
-    let params;
-
-    // LOGIKA BARU: Jika divisi kosong atau 'null', maka tampilkan SEMUA divisi
-    if (!divisi || divisi === '' || divisi === 'null') {
-      query = `
-        SELECT p.*, u.nama, d.nama_divisi, b.nama_barang, b.kode_sap, b.harga_sap
-        FROM permintaan_barang p
-        JOIN users u ON p.id_user = u.id_user
-        JOIN divisi d ON u.id_divisi = d.id_divisi
-        JOIN barang b ON p.id_barang = b.id_barang
-        WHERE EXTRACT(MONTH FROM p.tgl_permintaan) = $1
-        AND EXTRACT(YEAR FROM p.tgl_permintaan) = $2
-        ORDER BY p.no_fab DESC, p.tgl_permintaan DESC`;
-      params = [bulan, tahun];
-    } else {
-      // Jika ada id_divisi (untuk Manager/Operasional), filter berdasarkan divisi tersebut
-      query = `
-        SELECT p.*, u.nama, d.nama_divisi, b.nama_barang, b.kode_sap, b.harga_sap
-        FROM permintaan_barang p
-        JOIN users u ON p.id_user = u.id_user
-        JOIN divisi d ON u.id_divisi = d.id_divisi
-        JOIN barang b ON p.id_barang = b.id_barang
-        WHERE d.id_divisi = $1
-        AND EXTRACT(MONTH FROM p.tgl_permintaan) = $2
-        AND EXTRACT(YEAR FROM p.tgl_permintaan) = $3
-        ORDER BY p.no_fab DESC, p.tgl_permintaan DESC`;
-      params = [divisi, bulan, tahun];
-    }
-
-    const result = await pool.query(query, params);
+    const query = `
+      SELECT p.*, u.nama, d.nama_divisi, b.nama_barang, b.kode_sap, b.harga_sap
+      FROM permintaan_barang p
+      JOIN users u ON p.id_user = u.id_user
+      JOIN divisi d ON u.id_divisi = d.id_divisi
+      JOIN barang b ON p.id_barang = b.id_barang
+      WHERE d.id_divisi = $1
+      AND EXTRACT(MONTH FROM p.tgl_permintaan) = $2
+      AND EXTRACT(YEAR FROM p.tgl_permintaan) = $3
+      ORDER BY p.no_fab DESC, p.tgl_permintaan DESC`;
+    const result = await pool.query(query, [divisi, bulan, tahun]);
     res.json(result.rows);
   } catch (err) {
-    console.error(err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -98,7 +77,9 @@ router.get('/pemakaian/:id_divisi', async (req, res) => {
        FROM permintaan_barang p
        JOIN barang b ON p.id_barang = b.id_barang
        JOIN users u ON p.id_user = u.id_user
-       WHERE u.id_divisi = $1 
+       JOIN divisi d ON u.id_divisi = d.id_divisi
+       WHERE d.id_divisi = $1 
+       AND p.status_approval != 'Rejected'
        AND EXTRACT(MONTH FROM p.tgl_permintaan) = EXTRACT(MONTH FROM CURRENT_DATE)
        AND EXTRACT(YEAR FROM p.tgl_permintaan) = EXTRACT(YEAR FROM CURRENT_DATE)`,
       [id_divisi]

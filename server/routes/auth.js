@@ -43,11 +43,24 @@ if (err.code === '23505') {
 });
 
 // --- 2. ROUTE LOGIN (EXISTING) ---
+// --- 2. ROUTE LOGIN ---
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const result = await pool.query(`
+      SELECT 
+        u.id_user,
+        u.nama,
+        u.email,
+        u.password,
+        u.role,
+        u.id_divisi,
+        d.nama_divisi
+      FROM users u
+      LEFT JOIN divisi d ON u.id_divisi = d.id_divisi
+      WHERE u.email = $1
+    `, [email]);
 
     if (result.rows.length === 0) {
       return res.status(401).json({ message: "Email tidak ditemukan!" });
@@ -66,7 +79,8 @@ router.post('/login', async (req, res) => {
         id_user: user.id_user,
         nama: user.nama,
         role: user.role,
-        id_divisi: user.id_divisi
+        id_divisi: user.id_divisi,
+        nama_divisi: user.nama_divisi
       }
     });
 

@@ -1,36 +1,37 @@
 import React, { useState } from 'react';
 
-const FilterLaporan = ({ user, onFilterSubmit }) => {
-  const [bulan, setBulan] = useState(new Date().getMonth() + 1);
-  const [tahun, setTahun] = useState(new Date().getFullYear());
+const FilterLaporan = ({ onFilterSubmit }) => {
+  // Inisialisasi dengan tanggal hari ini dalam format YYYY-MM-DD
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const handleSubmit = () => {
+    const dateObj = new Date(selectedDate);
+    const bulan = dateObj.getMonth() + 1; // Ambil bulan (1-12)
+    const tahun = dateObj.getFullYear(); // Ambil tahun otomatis
+    
+    onFilterSubmit({ bulan, tahun });
+  };
 
   return (
     <div style={s.container}>
-      <h2 style={{ textAlign: 'center', color: '#2c3e50' }}>📊 Laporan FAB Per Divisi</h2>
-      <p style={{ textAlign: 'center' }}>Divisi: <strong>{user.nama_divisi || "Divisi Terdeteksi"}</strong></p>
-      
+      <h2 style={{ textAlign: 'center', color: '#2c3e50' }}>📊 Laporan FAB Per Departemen</h2>
+
       <div style={s.flex}>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Pilih Bulan:</label>
-          <select value={bulan} onChange={(e) => setBulan(e.target.value)} style={s.input}>
-            {Array.from({ length: 12 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>
-                {new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date(2026, i))}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Pilih Tahun:</label>
-          <select value={tahun} onChange={(e) => setTahun(e.target.value)} style={s.input}>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-          </select>
+          <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Pilih Periode (Bulan/Tahun):</label>
+          <input 
+            type="date" 
+            value={selectedDate} 
+            onChange={(e) => setSelectedDate(e.target.value)} 
+            style={s.input}
+          />
+          <small style={{ color: '#7f8c8d', fontSize: '10px' }}>
+            *Sistem akan mengambil data berdasarkan bulan & tahun dari tanggal di atas.
+          </small>
         </div>
       </div>
 
-      <button onClick={() => onFilterSubmit({ bulan, tahun })} style={s.btn}>
+      <button onClick={handleSubmit} style={s.btn}>
         Tampilkan Data Permintaan
       </button>
     </div>
@@ -38,10 +39,35 @@ const FilterLaporan = ({ user, onFilterSubmit }) => {
 };
 
 const s = {
-  container: { padding: '30px', backgroundColor: 'white', borderRadius: '12px', maxWidth: '500px', margin: '50px auto', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' },
-  flex: { display: 'flex', gap: '15px', marginTop: '20px' },
-  input: { width: '100%', padding: '10px', marginTop: '5px', borderRadius: '5px', border: '1px solid #ddd' },
-  btn: { width: '100%', padding: '12px', marginTop: '25px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }
+  container: { 
+    padding: '30px', 
+    backgroundColor: 'white', 
+    borderRadius: '12px', 
+    maxWidth: '400px', 
+    margin: '50px auto', 
+    boxShadow: '0 4px 15px rgba(0,0,0,0.1)' 
+  },
+  flex: { marginTop: '20px' },
+  input: { 
+    width: '100%', 
+    padding: '10px', 
+    marginTop: '8px', 
+    borderRadius: '5px', 
+    border: '1px solid #ddd',
+    fontSize: '14px',
+    boxSizing: 'border-box'
+  },
+  btn: { 
+    width: '100%', 
+    padding: '12px', 
+    marginTop: '25px', 
+    backgroundColor: '#3498db', 
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '5px', 
+    cursor: 'pointer', 
+    fontWeight: 'bold' 
+  }
 };
 
 export default FilterLaporan;

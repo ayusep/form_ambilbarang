@@ -7,7 +7,7 @@ router.get('/search', async (req, res) => {
   const { q } = req.query;
   try {
     const result = await pool.query(
-      `SELECT id_barang, kode_sap, nama_barang, harga_sap, stok 
+      `SELECT id_barang, kode_sap, nama_barang, harga_sap, stok, satuan
        FROM barang 
        WHERE (nama_barang ILIKE $1 OR kode_sap ILIKE $1) 
        AND stok > 0 LIMIT 5`,
