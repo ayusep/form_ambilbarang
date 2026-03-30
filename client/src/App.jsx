@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Dashboard from './components/Dashboard';
-import Divisi from './components/Divisi';
+import Departemen from './components/Departemen';
 import Barang from './components/Barang';
 import CreateRequest from './components/CreateRequest';
 import DataRequest from './components/DataRequest';
@@ -9,6 +9,7 @@ import Register from './components/Register';
 import Profile from './components/Profile';
 import Login from './components/Login';
 import UserList from './components/UserList';
+import Divisi from './components/Divisi'; // Pastikan file Divisi.js ada di folder components
 
 function App() {
   const [user, setUser] = useState(null);
@@ -21,7 +22,7 @@ function App() {
     if (loggedInUser) {
       const parsedUser = JSON.parse(loggedInUser);
       setUser(parsedUser);
-      if (parsedUser.role !== 'admin' && (activeMenu === 'divisi' || activeMenu === 'barang' || activeMenu === 'register')) {
+      if (parsedUser.role !== 'admin' && (activeMenu === 'departemen' || activeMenu === 'divisi' || activeMenu === 'barang' || activeMenu === 'register')) {
         setActiveMenu("request");
       }
     }
@@ -134,7 +135,7 @@ function App() {
       padding: '3px 8px',
       borderRadius: '10px'
     }}>
-      {user.nama_divisi || "Internal"}
+      {user.nama_departemen || "Belum Login"} (DIVISI {user.nama_divisi || "Staff"})
     </span>
   </div>
 </div>
@@ -163,10 +164,13 @@ function App() {
     MASTER DATA
   </p>
 
-  <div onClick={() => setActiveMenu("divisi")} style={menuStyle("divisi")}>
+  <div onClick={() => setActiveMenu("departemen")} style={menuStyle("departemen")}>
     🏢 Data Departemen
   </div>
 
+<div onClick={() => setActiveMenu("divisi")} style={menuStyle("divisi")}>
+  📂 Data Divisi</div>
+  
   <div onClick={() => setActiveMenu("barang")} style={menuStyle("barang")}>
     📦 Stok Barang (SAP)
   </div>
@@ -225,6 +229,7 @@ function App() {
 {activeMenu === "profile" && <Profile user={user} />}
 {activeMenu === "register" && user.role === 'admin' && <Register />}
 {activeMenu === "data_user" && user.role === 'admin' && <UserList />}
+{activeMenu === "departemen" && <Departemen />}
 {activeMenu === "divisi" && <Divisi />}
 {activeMenu === "barang" && <Barang />}
 {activeMenu === "request" && (user.role === 'admin' || user.role === 'operasional') && <CreateRequest user={user} />}
@@ -244,7 +249,7 @@ function App() {
                    ← Kembali ke Filter
                  </button>
                  <DataRequest 
-                   user={user.role === 'admin' ? { ...user, id_divisi: '' } : user} 
+                   user={user.role === 'admin' ? { ...user, id_departemen: '' } : user} 
                    filter={reportFilter} 
                  />
                </div>

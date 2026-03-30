@@ -12,18 +12,18 @@ const CreateRequest = ({ user }) => {
 
   const [limitBudgetPinjam, setLimitBudgetPinjam] = useState(0);
   const [pemakaianBulanIni, setPemakaianBulanIni] = useState(0);
-  const [namaDivisi, setNamaDivisi] = useState("");
+  const [namaDepartemen, setNamaDepartemen] = useState("");
 
   useEffect(() => {
     const fetchBudgetData = async () => {
-      if (user?.id_divisi) {
+      if (user?.id_departemen) {
         try {
-          const resDivisi = await fetch(`http://localhost:5000/api/divisi/${user.id_divisi}`);
-          const dataDivisi = await resDivisi.json();
-          setLimitBudgetPinjam(parseFloat(dataDivisi.limit_budget_pinjam) || 0);
-          setNamaDivisi(dataDivisi.nama_divisi || "");
+          const resDepartemen = await fetch(`http://localhost:5000/api/departemen/${user.id_departemen}`);
+          const dataDepartemen = await resDepartemen.json();
+          setLimitBudgetPinjam(parseFloat(dataDepartemen.limit_budget_pinjam) || 0);
+          setNamaDepartemen(dataDepartemen.nama_departemen || "");
 
-          const resPemakaian = await fetch(`http://localhost:5000/api/permintaan/pemakaian/${user.id_divisi}`);
+          const resPemakaian = await fetch(`http://localhost:5000/api/permintaan/pemakaian/${user.id_departemen}`);
           const dataPemakaian = await resPemakaian.json();
           setPemakaianBulanIni(parseFloat(dataPemakaian.total_bulan_ini) || 0);
         } catch (err) {
@@ -94,7 +94,7 @@ const CreateRequest = ({ user }) => {
 
     const dataTransaksi = {
       id_user: user.id_user,
-      id_divisi: user.id_divisi,
+      id_departemen: user.id_departemen,
       mesin,
       operator_maintenance: operator,
       coa,
@@ -126,7 +126,7 @@ const CreateRequest = ({ user }) => {
   return (
     <div style={{ padding: '20px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
       <h2 style={{ marginBottom: '20px', color: '#2c3e50', borderBottom: '2px solid #3498db', paddingBottom: '10px' }}>
-        📝 Form Ambil Barang (FAB) - {namaDivisi}
+        📝 Form Ambil Barang (FAB) - {namaDepartemen}
       </h2>
 
       {/* INPUT ROW */}
@@ -201,7 +201,7 @@ const CreateRequest = ({ user }) => {
       {/* BUDGET INFO */}
       <div style={s.budgetContainer}>
         <div>
-          <div style={{ fontSize: '12px', color: '#7f8c8d' }}>Limit Budget Departemen {namaDivisi} / Bulan:</div>
+          <div style={{ fontSize: '12px', color: '#7f8c8d' }}>Limit Budget Departemen {namaDepartemen} / Bulan:</div>
           <strong>Rp {limitBudgetPinjam.toLocaleString('id-ID')}</strong>
         </div>
         <div style={{ textAlign: 'right' }}>

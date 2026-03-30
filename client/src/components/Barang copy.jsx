@@ -27,13 +27,13 @@ const Barang = () => {
 
   return (
     <>
-      {/* HEADER - UI Identik dengan Divisi */}
+      {/* HEADER - UI Identik dengan Departemen */}
       <header style={{ marginBottom: '30px' }}>
         <h1>Stok Barang (Master SAP)</h1>
         <p>Daftar material yang ditarik dari sistem SAP pusat.</p>
       </header>
 
-      {/* TABEL DATA - UI Identik dengan Divisi */}
+      {/* TABEL DATA - UI Identik dengan Departemen */}
       <div style={{ 
         backgroundColor: 'white', 
         padding: '20px', 

@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
       await client.query(
         `INSERT INTO permintaan_barang (no_fab, id_barang, id_user, qty, status_approval, mesin, operator_maintenance, coa, tgl_permintaan) 
          VALUES ($1, $2, $3, $4, 'Pending', $5, $6, $7, CURRENT_TIMESTAMP)`,
-        [nextFab, item.id_barang, id_user, id_divisi, item.qty, mesin, operator_maintenance, coa]
+        [nextFab, item.id_barang, id_user, id_departemen, item.qty, mesin, operator_maintenance, coa]
       );
     }
 
@@ -49,19 +49,19 @@ router.post('/', async (req, res) => {
 
 // 2. FILTER DATA (GET)
 router.get('/filter', async (req, res) => {
-  const { bulan, tahun, divisi } = req.query;
+  const { bulan, tahun, departemen } = req.query;
   try {
     const query = `
-      SELECT p.*, u.nama, d.nama_divisi, b.nama_barang, b.kode_sap, b.harga_sap
+      SELECT p.*, u.nama, d.nama_departemen, b.nama_barang, b.kode_sap, b.harga_sap
       FROM permintaan_barang p
       JOIN users u ON p.id_user = u.id_user
-      JOIN divisi d ON u.id_divisi = d.id_divisi
+      JOIN departemen d ON u.id_departemen = d.id_departemen
       JOIN barang b ON p.id_barang = b.id_barang
-      WHERE d.id_divisi = $1
+      WHERE d.id_departemen = $1
       AND EXTRACT(MONTH FROM p.tgl_permintaan) = $2
       AND EXTRACT(YEAR FROM p.tgl_permintaan) = $3
       ORDER BY p.no_fab DESC, p.tgl_permintaan DESC`;
-    const result = await pool.query(query, [divisi, bulan, tahun]);
+    const result = await pool.query(query, [departemen, bulan, tahun]);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -69,20 +69,20 @@ router.get('/filter', async (req, res) => {
 });
 
 // 3. HITUNG PEMAKAIAN BULAN BERJALAN (RESET BUDGET)
-router.get('/pemakaian/:id_divisi', async (req, res) => {
-  const { id_divisi } = req.params;
+router.get('/pemakaian/:id_departemen', async (req, res) => {
+  const { id_departemen } = req.params;
   try {
     const result = await pool.query(
       `SELECT SUM(p.qty * b.harga_sap) as total_bulan_ini
        FROM permintaan_barang p
        JOIN barang b ON p.id_barang = b.id_barang
        JOIN users u ON p.id_user = u.id_user
-       JOIN divisi d ON u.id_divisi = d.id_divisi
-       WHERE d.id_divisi = $1 
+       JOIN departemen d ON u.id_departemen = d.id_departemen
+       WHERE d.id_departemen = $1 
        AND p.status_approval != 'Rejected'
        AND EXTRACT(MONTH FROM p.tgl_permintaan) = EXTRACT(MONTH FROM CURRENT_DATE)
        AND EXTRACT(YEAR FROM p.tgl_permintaan) = EXTRACT(YEAR FROM CURRENT_DATE)`,
-      [id_divisi]
+      [id_departemen]
     );
     res.json({ total_bulan_ini: result.rows[0].total_bulan_ini || 0 });
   } catch (err) {

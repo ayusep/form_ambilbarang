@@ -9,15 +9,17 @@ app.use(express.json()); // Penting agar bisa baca body JSON dari Login.jsx
 // 1. IMPORT ROUTES
 const authRoutes = require('./routes/auth'); // Pastikan path-nya benar
 const barangRoutes = require('./routes/barang');
-const divisiRoutes = require('./routes/divisi');
+const departemenRoutes = require('./routes/departemen');
 const userRoute = require('./routes/user');
 const permintaanRoutes = require('./routes/permintaan');
+const divisiRoutes = require('./routes/divisi');
 
 // 2. GUNAKAN ROUTES
 app.use('/api/auth', authRoutes); // Ini akan membuat URL: http://localhost:5000/api/auth/login
 app.use('/api/barang', barangRoutes);
-app.use('/api/divisi', divisiRoutes);
+app.use('/api/departemen', departemenRoutes);
 app.use('/api/permintaan', permintaanRoutes);
+app.use('/api/divisi', divisiRoutes);
 app.use('/api/user', userRoute);
 
 const PORT = 5000;

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 const UserList = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState(''); // State untuk pencarian
+  const [searchTerm, setSearchTerm] = useState('');
 
   // --- LOGIKA PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -13,7 +13,6 @@ const UserList = () => {
     fetch('http://localhost:5000/api/user')
       .then(res => res.json())
       .then(data => {
-        // Urutkan berdasarkan ID User terbaru jika diperlukan
         setUsers(data.sort((a, b) => b.id_user - a.id_user));
         setLoading(false);
       })
@@ -23,14 +22,15 @@ const UserList = () => {
       });
   }, []);
 
-  // 1. LOGIKA FILTER (Search Data)
+  // 1. LOGIKA FILTER (Search Data) - Ditambah pengecekan nama_divisi
   const filteredUsers = users.filter((u) => {
     const search = searchTerm.toLowerCase();
     return (
       u.nama?.toLowerCase().includes(search) ||
       u.email?.toLowerCase().includes(search) ||
       u.role?.toLowerCase().includes(search) ||
-      u.nama_divisi?.toLowerCase().includes(search)
+      u.nama_departemen?.toLowerCase().includes(search) ||
+      u.nama_divisi?.toLowerCase().includes(search) // <-- Tambahan filter divisi
     );
   });
 
@@ -52,16 +52,15 @@ const UserList = () => {
           </span>
         </div>
 
-        {/* INPUT SEARCH */}
         <div style={styles.searchWrapper}>
           <input
             type="text"
-            placeholder="Cari nama, email, role, atau departemen..."
+            placeholder="Cari nama, divisi, departemen..."
             style={styles.searchInput}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1); // Reset ke halaman 1 saat mengetik
+              setCurrentPage(1);
             }}
           />
         </div>
@@ -76,12 +75,13 @@ const UserList = () => {
               <th style={styles.th}>NAMA</th>
               <th style={styles.th}>EMAIL</th>
               <th style={styles.th}>ROLE</th>
+              <th style={styles.th}>DIVISI</th> {/* <-- Header Baru */}
               <th style={styles.th}>DEPARTEMEN</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px' }}>Memuat data...</td></tr>
+              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px' }}>Memuat data...</td></tr>
             ) : currentUsers.length > 0 ? (
               currentUsers.map((u, index) => (
                 <tr 
@@ -97,11 +97,17 @@ const UserList = () => {
                   <td style={styles.td}>
                     <span style={roleBadge(u.role)}>{u.role}</span>
                   </td>
-                  <td style={styles.td}>{u.nama_divisi || <span style={{color: '#bdc3c7'}}>Tidak ada divisi</span>}</td>
+                  {/* Kolom Divisi Baru */}
+                  <td style={styles.td}>
+                    {u.nama_divisi || <span style={{color: '#bdc3c7'}}>Tanpa Divisi</span>}
+                  </td>
+                  <td style={styles.td}>
+                    {u.nama_departemen || <span style={{color: '#bdc3c7'}}>Tanpa Departemen</span>}
+                  </td>
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#7f8c8d' }}>User tidak ditemukan.</td></tr>
+              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#7f8c8d' }}>User tidak ditemukan.</td></tr>
             )}
           </tbody>
         </table>

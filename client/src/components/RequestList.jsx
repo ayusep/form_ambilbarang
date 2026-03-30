@@ -5,18 +5,18 @@ const RequestList = () => {
   const [data, setData] = useState([]);
   const location = useLocation();
   
-  // Ambil parameter dari URL (misal: ?bulan=2&tahun=2026&divisi=1)
+  // Ambil parameter dari URL (misal: ?bulan=2&tahun=2026&departemen=1)
   const queryParams = new URLSearchParams(location.search);
   const bulan = queryParams.get('bulan');
   const tahun = queryParams.get('tahun');
-  const divisi = queryParams.get('divisi');
+  const departemen = queryParams.get('departemen');
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/permintaan/filter?bulan=${bulan}&tahun=${tahun}&divisi=${divisi}`)
+    fetch(`http://localhost:5000/api/permintaan/filter?bulan=${bulan}&tahun=${tahun}&departemen=${departemen}`)
       .then(res => res.json())
       .then(resData => setData(resData))
       .catch(err => console.error("Gagal load data:", err));
-  }, [bulan, tahun, divisi]);
+  }, [bulan, tahun, departemen]);
 
   return (
     <div style={{ padding: '20px' }}>

@@ -7,16 +7,15 @@ const DataRequest = ({ user, filter }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // FETCH DATA DENGAN LOGIKA ROLE (BACKEND COMPATIBLE)
+  const [printData, setPrintData] = useState(null);
+
   const fetchData = useCallback(async () => {
     try {
-      // Admin & Logistik mengirim 'all' atau string kosong agar backend tidak memfilter 1 divisi saja
-      // Catatan: Pastikan backend Anda menangani jika id_divisi kosong/null maka bypass filter divisi
       const isAdminOrLogistik = ['admin', 'logistik'].includes(user?.role);
-      const queryDivisi = isAdminOrLogistik ? '' : user.id_divisi;
+      const queryDepartemen = isAdminOrLogistik ? '' : user.id_departemen;
 
       const response = await fetch(
-        `http://localhost:5000/api/permintaan/filter?bulan=${filter.bulan}&tahun=${filter.tahun}&divisi=${queryDivisi}`
+        `http://localhost:5000/api/permintaan/filter?bulan=${filter.bulan}&tahun=${filter.tahun}&departemen=${queryDepartemen}`
       );
       const data = await response.json();
       setRequests(data);
@@ -53,7 +52,13 @@ const DataRequest = ({ user, filter }) => {
     }
   };
 
-  // 1. GROUPING (Menggabungkan item barang berdasarkan No. FAB yang sama)
+  const handlePrintManual = (fab) => {
+    setPrintData(fab);
+    setTimeout(() => {
+      window.print();
+    }, 500);
+  };
+
   const groupedData = requests.reduce((acc, item) => {
     const key = item.no_fab;
     if (!acc[key]) {
@@ -64,40 +69,32 @@ const DataRequest = ({ user, filter }) => {
     return acc;
   }, {});
 
-  // Mengubah object ke array dan urutkan berdasarkan no_fab TERBARU (descending)
   const finalData = Object.values(groupedData).sort((a, b) => b.no_fab - a.no_fab);
 
-  // 2. LOGIKA TOTAL BUDGET TERPAKAI (Hanya Pending + Approved)
+  // --- UPDATE LOGIKA TOTAL BUDGET (Pending + Approved + Closed) ---
   const totalBudgetTerpakai = finalData.reduce((sum, fab) => {
-    if (['Pending', 'Approved'].includes(fab.status_approval)) {
+    if (['Pending', 'Approved', 'Closed'].includes(fab.status_approval)) {
       return sum + fab.totalHargaFAB;
     }
     return sum;
   }, 0);
 
-  // 3. SEARCH & STATUS FILTER BERDASARKAN ROLE
   const filteredData = finalData.filter(fab => {
-    // A. Filter berdasarkan Role Logistik (Hanya Approved & Closed)
     if (user?.role === 'logistik') {
       if (!['Approved', 'Closed'].includes(fab.status_approval)) return false;
     }
-
-    // B. Filter Status dari Dropdown
     const matchesStatus = statusFilter === 'All' || fab.status_approval === statusFilter;
-
-    // C. Global Search (Semua data)
     const tglFormatted = new Date(fab.tgl_permintaan).toLocaleDateString('id-ID');
     const matchesSearch =
       fab.no_fab.toString().includes(searchTerm) ||
       fab.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fab.nama_divisi?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fab.nama_departemen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fab.mesin?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tglFormatted.includes(searchTerm);
 
     return matchesStatus && matchesSearch;
   });
 
-  // 4. PAGINATION
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
@@ -117,6 +114,62 @@ const DataRequest = ({ user, filter }) => {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Inter, sans-serif' }}>
+<style>
+{`
+@media screen{
+  .print-wrapper{ display:none; }
+}
+
+@media print{
+
+  body *{
+    visibility:hidden;
+  }
+
+  .print-wrapper,
+  .print-wrapper *{
+    visibility:visible;
+  }
+
+  .print-wrapper{
+    position:fixed;
+    top:0;
+    left:0;
+  }
+
+  .print-area{
+    width:210mm;
+    min-height:99mm;
+    padding:2mm;
+    margin:0;
+    box-sizing:border-box;
+    font-family:Arial;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+  }
+
+  th,td{
+    border:1px solid black;
+    font-size:8.5px;
+    padding:2px 4px;
+  }
+
+  th{
+    background:#efefef;
+  }
+
+  @page{
+    size:210mm 99mm;
+    margin:0;
+  }
+
+}
+`}
+</style>
+
       <header style={s.header}>
         <div>
           <h2 style={{ color: '#2c3e50', margin: 0 }}>📋 Data Request {filter.bulan}/{filter.tahun}</h2>
@@ -124,7 +177,6 @@ const DataRequest = ({ user, filter }) => {
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
-          {/* FILTER STATUS DROPDOWN */}
           <select
             style={s.selectFilter}
             value={statusFilter}
@@ -139,7 +191,7 @@ const DataRequest = ({ user, filter }) => {
 
           <input
             type="text"
-            placeholder="Cari FAB, Nama, Divisi..."
+            placeholder="Cari FAB, Nama, Departemen..."
             style={s.searchInput}
             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
           />
@@ -154,46 +206,68 @@ const DataRequest = ({ user, filter }) => {
               <th style={s.th}>TANGGAL</th>
               <th style={s.th}>PEMOHON</th>
               <th style={s.th}>LIST BARANG</th>
-              <th style={s.th}>TOTAL HARGA</th>
+              <th style={s.th}>DETAIL PENGGUNAAN</th>
+              <th style={s.th}>HARGA</th>
               <th style={s.th}>STATUS</th>
+              <th style={s.th}>KETERANGAN</th> {/* KOLOM BARU */}
               {user?.role !== 'operasional' && <th style={s.th}>AKSI</th>}
             </tr>
           </thead>
           <tbody>
             {currentItems.length === 0 ? (
-              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px' }}>Data tidak ditemukan.</td></tr>
+              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '30px' }}>Data tidak ditemukan.</td></tr>
             ) : currentItems.map((fab) => (
               <tr key={fab.no_fab} style={s.trBody}>
                 <td style={{ ...s.td, fontWeight: 'bold' }}>#{fab.no_fab}</td>
                 <td style={s.td}>{new Date(fab.tgl_permintaan).toLocaleDateString('id-ID')}</td>
                 <td style={s.td}>
                   <strong>{fab.nama}</strong><br />
-                  <small style={{ color: '#7f8c8d' }}>{fab.nama_divisi}</small>
+                  <small style={{ color: '#7f8c8d' }}>{fab.nama_departemen}</small>
                 </td>
+                
+
                 <td style={{ padding: 0 }}>
                   {fab.allItems.map((item, i) => (
                     <div key={i} style={s.innerCell}>{item.nama_barang} (x{item.qty})</div>
                   ))}
                 </td>
+
+{/* UPDATE CELL LIST BARANG */}
+      <td style={{ padding: 0 }}>
+        {fab.allItems.map((item, i) => (
+          <div key={i} style={{ ...s.innerCell, borderLeft: '3px solid #3498db', margin: '2px 0' }}>
+            <small style={{ color: '#7f8c8d', fontSize: '10px' }}>
+              ⚙️ {item.nama_mesin || '-'} <br /> 👷 {item.operator_maintenance || '-'} <br /> 🏷️ {item.nama_coa || '-'}
+            </small>
+          </div>
+        ))}
+      </td>
+
+
                 <td style={{ ...s.td, fontWeight: 'bold', color: '#2980b9' }}>{formatIDR(fab.totalHargaFAB)}</td>
                 <td style={s.td}>
                   <span style={{ ...s.badge, backgroundColor: getBadgeColor(fab.status_approval) }}>{fab.status_approval}</span>
                 </td>
 
-                {/* LOGIKA TOMBOL AKSI BERDASARKAN ROLE */}
+                {/* CELL KETERANGAN */}
+                <td style={{ ...s.td, fontSize: '11px', color: '#e74c3c', maxWidth: '150px' }}>
+                  {fab.keterangan || '-'}
+                </td>
+
                 {user?.role !== 'operasional' && (
                   <td style={s.td}>
                     <div style={{ display: 'flex', gap: '5px' }}>
-                      {/* Manager & Admin: Hanya saat Pending */}
                       {['manager', 'admin'].includes(user?.role) && fab.status_approval === 'Pending' && (
                         <>
                           <button onClick={() => handleActionFab(fab.no_fab, 'Approved')} style={s.btnA}>Approve</button>
                           <button onClick={() => handleActionFab(fab.no_fab, 'Rejected')} style={s.btnR}>Reject</button>
                         </>
                       )}
-                      {/* Logistik & Admin: Hanya saat Approved */}
                       {['logistik', 'admin'].includes(user?.role) && fab.status_approval === 'Approved' && (
                         <button onClick={() => handleActionFab(fab.no_fab, 'Closed')} style={s.btnC}>Close Order</button>
+                      )}
+                      {['logistik', 'admin'].includes(user?.role) && fab.status_approval === 'Closed' && (
+                        <button onClick={() => handlePrintManual(fab)} style={{ ...s.btnA, backgroundColor: '#8e44ad' }}>🖨️ Print</button>
                       )}
                     </div>
                   </td>
@@ -214,16 +288,337 @@ const DataRequest = ({ user, filter }) => {
         </div>
 
         <div style={s.grandTotalBox}>
-          <div style={{ color: '#7f8c8d', fontSize: '12px', fontWeight: 'bold' }}>Total Budget Terpakai (Pending + Approved):</div>
+          <div style={{ color: '#7f8c8d', fontSize: '12px', fontWeight: 'bold' }}>Total Budget Terpakai (Pnd + App + Cls):</div>
           <div style={{ color: '#27ae60', fontSize: '20px', fontWeight: 'bold' }}>{formatIDR(totalBudgetTerpakai)}</div>
         </div>
       </div>
+
+      {/* --- PRINT AREA TETAP SAMA --- */}
+      {printData && (
+<div className="print-wrapper">
+<div className="print-area">
+
+{/* HEADER */}
+<table>
+<tbody>
+
+<tr>
+
+{/* LOGO */}
+<td style={{width:'50px', textAlign:'center'}}>
+  <img 
+    src={`${window.location.origin}/BBP LOGO.png`} 
+    style={{width:'20px'}} 
+    alt="Logo BBP"
+    onError={(e) => console.log("Gagal muat gambar:", e.target.src)}
+  />
+</td>
+
+{/* NAMA PERUSAHAAN */}
+<td style={{width:'360px'}}>
+<div style={{fontWeight:'bold',fontSize:'11px'}}>
+PT. BAHANA BHUMIPHALA PERSADA
+</div>
+<div style={{fontSize:'8px'}}>
+Jl. Raya Semarang - Pekalongan Km. 59 Batang
+</div>
+</td>
+
+{/* USER */}
+<td rowSpan="2" style={{textAlign:'center',verticalAlign:'top',width:'120px'}}>
+<div>User,</div>
+
+<div style={{
+marginTop:'10px',
+fontSize:'7px',
+color:'#27ae60',
+border:'1px solid #27ae60',
+display:'inline-block',
+padding:'2px 5px',
+transform:'rotate(-5deg)'
+}}>
+APPROVED
+</div>
+
+<div style={{fontSize:'7px',marginTop:'6px'}}>
+Coord/Kasie/Staff
+</div>
+</td>
+
+
+{/* CONTROLLER */}
+<td rowSpan="2" style={{textAlign:'center',verticalAlign:'top',width:'120px'}}>
+<div>Controller,</div>
+
+<div style={{
+marginTop:'10px',
+fontSize:'7px',
+color:'#27ae60',
+border:'1px solid #27ae60',
+display:'inline-block',
+padding:'2px 5px',
+transform:'rotate(-5deg)'
+}}>
+APPROVED
+</div>
+
+<div style={{fontSize:'7px',marginTop:'6px'}}>
+PIC Budget
+</div>
+</td>
+
+
+{/* MENGETAHUI */}
+<td rowSpan="2" style={{textAlign:'center',verticalAlign:'top',width:'120px'}}>
+<div>Mengetahui,</div>
+
+<div style={{
+marginTop:'10px',
+fontSize:'7px',
+color:'#27ae60',
+border:'1px solid #27ae60',
+display:'inline-block',
+padding:'2px 5px',
+transform:'rotate(-5deg)'
+}}>
+APPROVED
+</div>
+
+<div style={{fontSize:'7px',marginTop:'6px'}}>
+Spv/Kabag/Mgr
+</div>
+</td>
+
+
+{/* GNBB */}
+<td rowSpan="2" style={{textAlign:'center',verticalAlign:'top',width:'120px'}}>
+<div>GNBB,</div>
+
+<div style={{
+marginTop:'10px',
+fontSize:'7px',
+color:'#27ae60',
+border:'1px solid #27ae60',
+display:'inline-block',
+padding:'2px 5px',
+transform:'rotate(-5deg)'
+}}>
+APPROVED
+</div>
+
+<div style={{fontSize:'7px',marginTop:'6px'}}>
+Staff
+</div>
+</td>
+
+</tr>
+
+
+{/* BARIS FORM FAB */}
+<tr>
+
+<td colSpan="2"
+style={{
+background:'black',
+color:'white',
+textAlign:'center',
+fontWeight:'bold',
+fontSize:'14px',
+padding:'6px'
+}}>
+FORM AMBIL BARANG (FAB)
+</td>
+
+</tr>
+
+</tbody>
+</table>
+
+{/* INFO */}
+<table>
+<tbody>
+
+<tr>
+<td style={{width:'30%'}}>Bagian : <b>{printData.nama_departemen}</b></td>
+<td style={{width:'20%'}}>Sub : <b>{printData.nama_divisi}</b></td>{/* PERBAIKI INI, Sub adalah AMBIL DATA NAMA DIVISI DARI ID_USER */}
+<td style={{width:'25%'}}>Tanggal : <b>
+{new Date(printData.tgl_permintaan).toLocaleDateString('id-ID')}
+</b></td>
+<td style={{width:'25%'}}>No FAB : <b>{printData.no_fab}</b></td>
+</tr>
+
+</tbody>
+</table>
+
+
+{/* TABEL BARANG */}
+<table>
+
+<thead>
+
+<tr>
+<th rowSpan="2">No</th>
+<th rowSpan="2">Nama Barang</th>
+<th rowSpan="2">Spesifikasi</th>
+<th rowSpan="2">Kode Barang</th>
+
+<th colSpan="2">Kuantitas</th>
+
+<th colSpan="3">Penggunaan</th>
+
+<th rowSpan="2">Keterangan</th>
+</tr>
+
+<tr>
+<th>Jml</th>
+<th>Sat</th> 
+<th>COA</th>
+<th>Mesin</th>
+<th>Teknisi</th>
+</tr>
+
+</thead>
+
+<tbody>
+
+{Array.from({length:10}).map((_,i)=>{
+
+const item = printData.allItems[i]
+
+return(
+<tr key={i} style={{height:'20px'}}>
+
+<td style={{textAlign:'center'}}>{i+1}</td>
+
+<td>{item?.nama_barang || ''}</td>
+
+<td>{item?.spesifikasi || '-'}</td>
+
+<td style={{textAlign:'center'}}>{item?.kode_sap || ''}</td> 
+
+<td style={{textAlign:'center'}}>{item?.qty || ''}</td>
+
+<td style={{textAlign:'center'}}>{item?.satuan || ''}</td> {/* PERBAIKI INI, SAT adalah AMBIL DATA satuan dari id barang*/}
+
+
+<td style={{textAlign:'center'}}>{item?.nama_coa || ''}</td>
+
+<td style={{textAlign:'center'}}>{item?.nama_mesin || ''}</td>
+
+<td style={{textAlign:'center'}}>{item?.operator_maintenance || ''}</td>
+
+<td style={{fontSize:'7px'}}>
+{i===0 ? printData.keterangan : ''}
+</td>
+
+</tr>
+)
+
+})}
+
+</tbody>
+
+</table>
+
+
+{/* FOOTER */}
+<div style={{
+display:'flex',
+justifyContent:'space-between',
+fontSize:'7px',
+marginTop:'2px'
+}}>
+
+<div>
+*) Form digandakan : Lembar Putih : Accounting, Biru : GNBB, Kuning : User
+</div>
+
+<div>
+Printed : {new Date().toLocaleString('id-ID')}
+</div>
+
+</div>
+
+
+</div>
+</div>
+)}
     </div>
   );
 };
 
-// CSS-in-JS Styles
+const p = {
+  container: {
+    backgroundColor: 'white',
+    width: '210mm',
+    height: '99mm',
+    fontFamily: 'Arial',
+    fontSize: '9px'
+  },
+
+  tableHeader: {
+    width: '100%',
+    border: '1px solid black'
+  },
+
+  logoBox: {
+    width: '45px',
+    textAlign: 'center'
+  },
+
+  companyInfo: {
+    fontSize: '9px',
+    padding: '2px'
+  },
+
+  signHeader: {
+    fontSize: '9px',
+    textAlign: 'center',
+    fontWeight: 'bold'
+  },
+
+  formTitle: {
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: '12px'
+  },
+
+  approveBox: {
+    height: '35px',
+    textAlign: 'center',
+    verticalAlign: 'top'
+  },
+
+  stampContainer: {
+    display: 'flex',
+    justifyContent: 'center'
+  },
+
+  stampText: {
+    fontSize: '8px',
+    color: '#27ae60',
+    border: '1px solid #27ae60',
+    padding: '1px 4px'
+  },
+
+  roleText: {
+    fontSize: '7px'
+  },
+
+  tableMid: {
+    marginTop: '2px',
+    fontSize: '9px'
+  },
+
+  tableMain: {
+    marginTop: '2px',
+    fontSize: '9px',
+    tableLayout: 'fixed'
+  }
+};
+
 const s = {
+  // ... copy styles dari kode lama Anda ...
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
   selectFilter: { padding: '8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '12px', backgroundColor: '#fff', cursor: 'pointer' },
   searchInput: { padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', width: '250px', fontSize: '12px' },
