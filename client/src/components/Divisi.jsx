@@ -90,7 +90,7 @@ const Divisi = () => {
         <h2 style={{ color: '#2c3e50' }}>🏢 Manajemen Divisi</h2>
       </header>
 
-      <div style={styles.card}>
+      {/* <div style={styles.card}>
         <h3 style={{ marginTop: 0 }}>Tambah Divisi Baru</h3>
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <select style={styles.input} value={idDepartemen} onChange={(e) => setIdDepartemen(e.target.value)} required>
@@ -103,7 +103,7 @@ const Divisi = () => {
           <input style={styles.input} type="text" placeholder="Nama Divisi" value={namaDivisi} onChange={(e) => setNamaDivisi(e.target.value)} required />
           <button type="submit" style={styles.btnSimpan}>Simpan</button>
         </form>
-      </div>
+      </div> */}
 
       <div style={styles.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>

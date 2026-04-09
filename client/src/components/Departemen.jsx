@@ -93,7 +93,7 @@ const Departemen = () => {
         <h2 style={{ color: '#2c3e50' }}>🏢 Manajemen Departemen</h2>
       </header>
       
-      <div style={styles.card}>
+      {/* <div style={styles.card}>
         <h3 style={{ marginTop: 0 }}>Tambah Departemen Baru</h3>
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <input style={styles.input} type="text" placeholder="Kode (Contoh: IT)" value={codeDepartemen} onChange={(e) => setCodeDepartemen(e.target.value)} required />
@@ -101,7 +101,7 @@ const Departemen = () => {
           <input style={styles.input} type="number" placeholder="Limit Budget" value={limitBudget} onChange={(e) => setLimitBudget(e.target.value)} required />
           <button type="submit" style={styles.btnSimpan}>Simpan</button>
         </form>
-      </div>
+      </div> */}
 
       <div style={styles.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
