@@ -9,7 +9,8 @@ import Register from './components/Register';
 import Profile from './components/Profile';
 import Login from './components/Login';
 import UserList from './components/UserList';
-import Divisi from './components/Divisi'; // Pastikan file Divisi.js ada di folder components
+import Divisi from './components/Divisi'; 
+import Budgeting from './components/Budgeting';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -168,6 +169,13 @@ function App() {
     🏢 Data Departemen
   </div>
 
+{/* TAMBAHKAN MENU BUDGETING DI SINI */}
+{user.role === 'admin' && (
+  <div onClick={() => setActiveMenu("budgeting")} style={menuStyle("budgeting")}>
+    💰 Manajemen Budgeting
+  </div>
+)}
+
 <div onClick={() => setActiveMenu("divisi")} style={menuStyle("divisi")}>
   📂 Data Divisi</div>
   
@@ -183,7 +191,7 @@ function App() {
   </p>
 
   {/* FAB hanya admin & operasional */}
-  {(user.role === 'admin' || user.role === 'operasional') && (
+  {(user.role === 'admin' || user.role === 'operasional'|| user.role === 'supporting') && (
     <div onClick={() => setActiveMenu("request")} style={menuStyle("request")}>
       📝 Form Ambil Barang (FAB)
     </div>
@@ -230,6 +238,7 @@ function App() {
 {activeMenu === "register" && user.role === 'admin' && <Register />}
 {activeMenu === "data_user" && user.role === 'admin' && <UserList />}
 {activeMenu === "departemen" && <Departemen />}
+{activeMenu === "budgeting" && user.role === 'admin' && <Budgeting />}
 {activeMenu === "divisi" && <Divisi />}
 {activeMenu === "barang" && <Barang />}
 {activeMenu === "request" && (user.role === 'admin' || user.role === 'operasional') && <CreateRequest user={user} />}

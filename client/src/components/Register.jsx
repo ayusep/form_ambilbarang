@@ -3,18 +3,17 @@ import React, { useState, useEffect } from 'react';
 const Register = () => {
   const [formData, setFormData] = useState({
     nama: '', 
-    email: '', 
+    email: '', // Tetap biarkan nama field-nya 'email' agar sinkron dengan database
     password: '', 
     no_telp: '', 
     role: 'operasional', 
-    id_divisi: '' // Menggunakan id_divisi sebagai input utama
+    id_divisi: '' 
   });
   
-  const [divisiList, setDivisiList] = useState([]); // State untuk menampung data divisi
+  const [divisiList, setDivisiList] = useState([]); 
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    // Load data divisi dari server
     fetch('http://localhost:5000/api/divisi')
       .then(res => res.json())
       .then(data => setDivisiList(data))
@@ -28,7 +27,6 @@ const Register = () => {
       return;
     }
 
-    // Cari id_departemen berdasarkan id_divisi yang dipilih
     const selectedDivisi = divisiList.find(d => d.id_divisi === parseInt(formData.id_divisi));
     const dataToSend = {
       ...formData,
@@ -67,9 +65,16 @@ const Register = () => {
           value={formData.nama}
           onChange={(e) => setFormData({...formData, nama: e.target.value})} />
         
-        <input type="email" placeholder="Email" required style={styles.input}
-          value={formData.email}
-          onChange={(e) => setFormData({...formData, email: e.target.value})} />
+        {/* --- PERUBAHAN DI SINI --- */}
+        <input 
+          type="text" // Diubah dari 'email' ke 'text'
+          placeholder="Username" // Diubah dari 'Email' ke 'Username'
+          required 
+          style={styles.input}
+          value={formData.email} // Tetap menggunakan formData.email
+          onChange={(e) => setFormData({...formData, email: e.target.value})} 
+        />
+        {/* ------------------------- */}
         
         <div style={styles.passwordWrapper}>
           <input 
@@ -97,13 +102,13 @@ const Register = () => {
             onChange={(e) => setFormData({...formData, role: e.target.value})}
           >
             <option value="operasional">Operasional</option>
-            <option value="manager">Manager</option>
+            <option value="supporting">Supporting</option>
+            <option value="approver">Approver</option>
             <option value="logistik">Logistik</option>
             <option value="admin">Admin</option>
           </select>
         </div>
 
-        {/* --- DROPDOWN DIVISI --- */}
         <div style={styles.labelGroup}>
           <label style={styles.label}>Divisi Kerja:</label>
           <select 
@@ -127,7 +132,6 @@ const Register = () => {
   );
 };
 
-// --- 3. TAMBAHKAN STYLE BARU ---
 const styles = {
   container: { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f4f7f6', padding: '20px' },
   card: { padding: '30px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', width: '380px', display: 'flex', flexDirection: 'column', gap: '12px' },

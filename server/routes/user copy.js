@@ -35,7 +35,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// server\routes\user.js (Bagian PUT /:id)
+// server\routes\user.js (Bagian UPDATE USER)
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { nama, email, role, no_telp, id_divisi, id_departemen, password } = req.body;
@@ -44,8 +44,8 @@ router.put('/:id', async (req, res) => {
     let query;
     let params;
 
-    // Logika ini memastikan id_departemen yang didapat dari sinkronisasi frontend tersimpan
     if (password && password.trim() !== "") {
+      // Gunakan hashPassword agar password tidak tersimpan sebagai teks biasa
       const hashedPassword = hashPassword(password); 
       query = `UPDATE users SET nama=$1, email=$2, role=$3, no_telp=$4, id_divisi=$5, id_departemen=$6, password=$7 WHERE id_user=$8`;
       params = [nama, email, role, no_telp, id_divisi, id_departemen, hashedPassword, id];
@@ -57,8 +57,7 @@ router.put('/:id', async (req, res) => {
     await pool.query(query, params);
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Gagal menyimpan perubahan ke database." });
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 const CreateRequest = ({ user }) => {
+  // ... (State tetap sama)
   const [mesin, setMesin] = useState("");
   const [operator, setOperator] = useState("");
   const [coa, setCoa] = useState("");
@@ -11,28 +12,46 @@ const CreateRequest = ({ user }) => {
   const [selectedBarang, setSelectedBarang] = useState(null);
   const [listMesin, setListMesin] = useState([]);
   const [listCoa, setListCoa] = useState([]);
-
   const [searchMesin, setSearchMesin] = useState("");
   const [resultsMesin, setResultsMesin] = useState([]);
   const [selectedMesin, setSelectedMesin] = useState(null);
-
   const [limitBudgetPinjam, setLimitBudgetPinjam] = useState(0);
   const [pemakaianBulanIni, setPemakaianBulanIni] = useState(0);
   const [namaDepartemen, setNamaDepartemen] = useState("");
+  const [listTeknisi, setListTeknisi] = useState([]);
+  const [isLoading, setIsLoading] = useState(false); // Tambahan status loading
 
-  // Fetch Master Data (Mesin & COA)
+  // --- REKOMENDASI 1: FUNGSI HIGHLIGHT TEKS ---
+  const highlightText = (text, query) => {
+    if (!query) return text;
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return (
+      <span>
+        {parts.map((part, i) => 
+          part.toLowerCase() === query.toLowerCase() 
+            ? <strong key={i} style={{ color: '#3498db' }}>{part}</strong> 
+            : part
+        )}
+      </span>
+    );
+  };
+
+  // 1. Fetch Master Data
   useEffect(() => {
     const fetchMasterData = async () => {
       if (!user?.id_divisi) return;
       try {
-        const [resMesin, resCoa] = await Promise.all([
+        const [resMesin, resCoa, resTeknisi] = await Promise.all([
           fetch('http://localhost:5000/api/permintaan/mesin'),
-          fetch(`http://localhost:5000/api/permintaan/coa?id_divisi=${user.id_divisi}`)
+          fetch(`http://localhost:5000/api/permintaan/coa?id_divisi=${user.id_divisi}`),
+          fetch('http://localhost:5000/api/permintaan/teknisi')
         ]);
         const dataMesin = await resMesin.json();
         const dataCoa = await resCoa.json();
+        const dataTeknisi = await resTeknisi.json();
         setListMesin(dataMesin);
         setListCoa(dataCoa);
+        setListTeknisi(dataTeknisi);
       } catch (err) {
         console.error("Gagal ambil data master:", err);
       }
@@ -40,7 +59,7 @@ const CreateRequest = ({ user }) => {
     fetchMasterData();
   }, [user]);
 
-  // Search Mesin Logic
+  // 2. Search Mesin Logic
   useEffect(() => {
     if (searchMesin.length > 0 && !selectedMesin) {
       const filtered = listMesin.filter(m =>
@@ -52,58 +71,59 @@ const CreateRequest = ({ user }) => {
     }
   }, [searchMesin, selectedMesin, listMesin]);
 
-  // Fetch Budget Data
+  // 3. Fetch Budget Data
   useEffect(() => {
     const fetchBudgetData = async () => {
-      if (user?.id_departemen) {
-        try {
-          const res = await fetch(`http://localhost:5000/api/departemen/${user.id_departemen}`);
-          const data = await res.json();
-          if (res.ok) {
-            setLimitBudgetPinjam(data.limit_budget_pinjam);
-            setNamaDepartemen(data.nama_departemen);
-            setPemakaianBulanIni(data.terpakai_bulan_ini);
-          }
-        } catch (err) {
-          console.error("Gagal sinkronisasi data budget:", err);
+      if (!user || !user.id_departemen) return;
+      try {
+        const res = await fetch(`http://localhost:5000/api/permintaan/budget-aktif/${user.id_departemen}`);
+        const data = await res.json();
+        if (res.ok) {
+          setLimitBudgetPinjam(Number(data.limit_budget) || 0); 
+          setNamaDepartemen(data.nama_departemen || ""); 
+          setPemakaianBulanIni(Number(data.terpakai_bulan_ini) || 0);
         }
+      } catch (err) {
+        console.error("Gagal sinkronisasi data budget:", err);
       }
     };
     fetchBudgetData();
   }, [user]);
 
-  const totalKeranjang = cart.reduce((sum, item) => sum + item.total_baris, 0);
-  const sisaBudget = limitBudgetPinjam - pemakaianBulanIni - totalKeranjang;
+  const totalKeranjang = cart.reduce((sum, item) => sum + (Number(item.total_baris) || 0), 0);
+  const sisaBudget = Number(limitBudgetPinjam) - Number(pemakaianBulanIni) - totalKeranjang;
 
-  // Search Barang Logic
+  // 4. Search Barang Logic (Enhanced)
   useEffect(() => {
+    if (searchTerm.trim().length <= 0 || selectedBarang) {
+      setResults([]);
+      return;
+    }
+
     const fetchBarang = async () => {
-      if (searchTerm.length > 1 && !selectedBarang) {
-        try {
-          const response = await fetch(`http://localhost:5000/api/barang/search?q=${searchTerm}`);
-          const data = await response.json();
-          setResults(data);
-        } catch (err) {
-          console.error("Gagal mengambil data search:", err);
-        }
-      } else {
+      setIsLoading(true);
+      try {
+        const response = await fetch(`http://localhost:5000/api/barang/search?q=${searchTerm}`);
+        const data = await response.json();
+        setResults(data);
+      } catch (err) {
+        console.error("Error search barang:", err);
         setResults([]);
+      } finally {
+        setIsLoading(false);
       }
     };
-    const delayDebounceFn = setTimeout(() => fetchBarang(), 300);
+
+    const delayDebounceFn = setTimeout(fetchBarang, 400);
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, selectedBarang]);
 
   const addToCart = () => {
-    // Validasi Dasar
     if (!selectedBarang) return alert("Pilih barang terlebih dahulu!");
-    if (!selectedMesin) return alert("Pilih Mesin dari daftar yang muncul!");
-    if (!operator.trim()) return alert("Isi nama Teknisi!");
     if (!coa) return alert("Pilih COA!");
 
     const inputQty = parseInt(qty);
     if (isNaN(inputQty) || inputQty <= 0) return alert("Qty tidak valid!");
-    if (inputQty > selectedBarang.stok) return alert(`Stok sisa: ${selectedBarang.stok}`);
 
     const harga = parseFloat(selectedBarang.harga_sap);
     const totalHargaBarangBaru = harga * inputQty;
@@ -113,7 +133,6 @@ const CreateRequest = ({ user }) => {
       return;
     }
 
-    // Cari objek COA untuk mendapatkan label namanya
     const selectedCoaObj = listCoa.find(c => String(c.id_coa) === String(coa));
 
     const newItem = {
@@ -122,18 +141,14 @@ const CreateRequest = ({ user }) => {
       qty: inputQty,
       harga_sap: harga,
       total_baris: totalHargaBarangBaru,
-      
-      // Data Transaksional per Baris
-      id_mesin: selectedMesin.id_mesin,    // Dikirim ke backend
-      nama_mesin: selectedMesin.nama_mesin, // Tampilan tabel
-      operator: operator,                  // Tampilan tabel & backend
-      id_coa: coa,                        // Dikirim ke backend (ID)
-      nama_coa: selectedCoaObj ? selectedCoaObj.coa : "N/A" // Tampilan tabel (Teks)
+      id_mesin: selectedMesin ? selectedMesin.id_mesin : null, 
+      nama_mesin: selectedMesin ? selectedMesin.nama_mesin : "-",
+      operator: operator.trim() || "-",
+      id_coa: coa,
+      nama_coa: selectedCoaObj ? selectedCoaObj.coa : "N/A"
     };
 
     setCart([...cart, newItem]);
-    
-    // Reset hanya input barang agar input barang selanjutnya lebih cepat
     setSearchTerm("");
     setSelectedBarang(null);
     setQty(1);
@@ -149,7 +164,7 @@ const CreateRequest = ({ user }) => {
     const dataTransaksi = {
       id_user: user.id_user,
       id_departemen: user.id_departemen,
-      items: cart, // Backend harus handle loop items untuk insert ke detail
+      items: cart,
       total_harga_seluruhnya: totalKeranjang
     };
 
@@ -177,16 +192,44 @@ const CreateRequest = ({ user }) => {
         📝 Form Ambil Barang (FAB) - {namaDepartemen}
       </h2>
 
-      {/* INPUT ROW */}
       <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap' }}>
         <div style={{ flex: 2, position: 'relative', minWidth: '200px' }}>
           <label style={s.label}>Cari Barang:</label>
-          <input type="text" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setSelectedBarang(null); }} placeholder="Nama/SAP..." style={s.inputFAB} />
+          <input 
+            type="text" 
+            value={searchTerm} 
+            onChange={(e) => { 
+              setSearchTerm(e.target.value);
+              if (selectedBarang) setSelectedBarang(null); 
+            }} 
+            placeholder="Ketik nama barang atau kode SAP..." 
+            style={s.inputFAB} 
+          />
+          
+          {/* --- REKOMENDASI 2 & 4: LOADING & PESAN TIDAK DITEMUKAN --- */}
+          {(isLoading || (searchTerm.length > 1 && results.length === 0 && !selectedBarang)) && (
+            <div style={s.dropdown}>
+               <div style={s.dropdownItem}>
+                  {isLoading ? "🔍 Mencari..." : "⚠️ Barang tidak ditemukan"}
+               </div>
+            </div>
+          )}
+
           {results.length > 0 && (
             <div style={s.dropdown}>
               {results.map(b => (
-                <div key={b.id_barang} onClick={() => { setSelectedBarang(b); setSearchTerm(`${b.kode_sap} - ${b.nama_barang}`); setResults([]); }} style={s.dropdownItem}>
-                  {b.kode_sap} - {b.nama_barang} (Stok: {b.stok})
+                <div 
+                  key={b.id_barang} 
+                  onClick={() => { 
+                    setSelectedBarang(b); 
+                    setSearchTerm(`${b.kode_sap} - ${b.nama_barang}`); 
+                    setResults([]); 
+                  }} 
+                  style={s.dropdownItem}
+                >
+                  {/* --- REKOMENDASI 1: HIGHLIGHT HASIL --- */}
+                  <div style={{ fontSize: '11px', color: '#95a5a6' }}>{b.kode_sap}</div>
+                  <div style={{ fontSize: '14px' }}>{highlightText(b.nama_barang, searchTerm)}</div>
                 </div>
               ))}
             </div>
@@ -200,11 +243,20 @@ const CreateRequest = ({ user }) => {
 
         <div style={{ flex: 1, position: 'relative', minWidth: '150px' }}>
           <label style={s.label}>Mesin:</label>
-          <input type="text" value={searchMesin} onChange={(e) => { setSearchMesin(e.target.value); setSelectedMesin(null); setMesin(""); }} placeholder="Cari Mesin..." style={s.inputFAB} />
+          <input 
+            type="text" 
+            value={searchMesin} 
+            onChange={(e) => { 
+              setSearchMesin(e.target.value); 
+              setSelectedMesin(null); 
+            }} 
+            placeholder="Cari Mesin..." 
+            style={s.inputFAB} 
+          />
           {resultsMesin.length > 0 && (
             <div style={s.dropdown}>
               {resultsMesin.map(m => (
-                <div key={m.id_mesin} onClick={() => { setSelectedMesin(m); setSearchMesin(m.nama_mesin); setMesin(m.id_mesin); setResultsMesin([]); }} style={s.dropdownItem}>
+                <div key={m.id_mesin} onClick={() => { setSelectedMesin(m); setSearchMesin(m.nama_mesin); setResultsMesin([]); }} style={s.dropdownItem}>
                   {m.no_item} - {m.nama_mesin}
                 </div>
               ))}
@@ -212,9 +264,14 @@ const CreateRequest = ({ user }) => {
           )}
         </div>
 
-        <div style={{ flex: 1, minWidth: '120px' }}>
+        <div style={{ flex: 1, minWidth: '150px' }}>
           <label style={s.label}>Teknisi:</label>
-          <input type="text" value={operator} onChange={(e) => setOperator(e.target.value)} placeholder="Nama..." style={s.inputFAB} />
+          <select value={operator} onChange={(e) => setOperator(e.target.value)} style={s.inputFAB}>
+            <option value="">-- Pilih Teknisi --</option>
+            {listTeknisi.map((t) => (
+              <option key={t.id_user} value={t.nama}>{t.nama}</option>
+            ))}
+          </select>
         </div>
 
         <div style={{ flex: 1, minWidth: '150px' }}>
@@ -222,7 +279,7 @@ const CreateRequest = ({ user }) => {
           <select value={coa} onChange={(e) => setCoa(e.target.value)} style={s.inputFAB}>
             <option value="">-- Pilih COA --</option>
             {listCoa.map((c) => (
-              <option key={c.id_coa} value={c.id_coa}> {c.kode_akun} - {c.coa}</option>
+              <option key={c.id_coa} value={c.id_coa}>{c.kode_akun} - {c.coa}</option>
             ))}
           </select>
         </div>
@@ -232,7 +289,6 @@ const CreateRequest = ({ user }) => {
         </div>
       </div>
 
-      {/* TABLE */}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px', fontSize: '13px' }}>
           <thead>
@@ -247,30 +303,29 @@ const CreateRequest = ({ user }) => {
               <th style={s.th}>Aksi</th>
             </tr>
           </thead>
-<tbody>
-  {cart.length === 0 ? (
-    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>Belum ada barang di keranjang</td></tr>
-  ) : (
-    cart.map((item, idx) => (
-      <tr key={idx}>
-        <td style={s.td}>{idx + 1}</td>
-        <td style={{ ...s.td, textAlign: 'left' }}>{item.nama_barang}</td>
-        <td style={s.td}>{item.qty}</td>
-        <td style={s.td}>Rp {item.total_baris.toLocaleString('id-ID')}</td>
-        <td style={s.td}>{item.nama_mesin}</td>
-        <td style={s.td}>{item.operator}</td>
-        <td style={s.td}>{item.nama_coa}</td> {/* Perbaikan: panggil nama_coa bukan coa */}
-        <td style={s.td}>
-          <button onClick={() => setCart(cart.filter((_, i) => i !== idx))} style={s.btnBatal}>Batal</button>
-        </td>
-      </tr>
-    ))
-  )}
-</tbody>
+          <tbody>
+            {cart.length === 0 ? (
+              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>Belum ada barang di keranjang</td></tr>
+            ) : (
+              cart.map((item, idx) => (
+                <tr key={idx}>
+                  <td style={s.td}>{idx + 1}</td>
+                  <td style={{ ...s.td, textAlign: 'left' }}>{item.nama_barang}</td>
+                  <td style={s.td}>{item.qty}</td>
+                  <td style={s.td}>Rp {item.total_baris.toLocaleString('id-ID')}</td>
+                  <td style={s.td}>{item.nama_mesin}</td>
+                  <td style={s.td}>{item.operator}</td>
+                  <td style={s.td}>{item.nama_coa}</td>
+                  <td style={s.td}>
+                    <button onClick={() => setCart(cart.filter((_, i) => i !== idx))} style={s.btnBatal}>Batal</button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
         </table>
       </div>
 
-      {/* BUDGET INFO & BUTTON SIMPAN */}
       <div style={s.budgetContainer}>
         <div>
           <div style={{ fontSize: '12px', color: '#7f8c8d' }}>Limit Budget / Bulan:</div>
@@ -278,8 +333,8 @@ const CreateRequest = ({ user }) => {
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '14px', color: '#7f8c8d' }}>Sisa Saldo FAB:</div>
-          <strong style={{ fontSize: '18px', color: sisaBudget < 100000 ? '#e74c3c' : '#27ae60' }}>
-            Rp {sisaBudget.toLocaleString('id-ID')}
+          <strong style={{ fontSize: '18px', color: sisaBudget <= 0 ? '#e74c3c' : '#27ae60' }}>
+            Rp {Number(sisaBudget).toLocaleString('id-ID')}
           </strong>
         </div>
       </div>
@@ -296,8 +351,24 @@ const s = {
   inputFAB: { width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' },
   btnTambah: { padding: '9px 20px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
   btnSimpan: { width: '100%', padding: '15px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' },
-  dropdown: { position: 'absolute', zIndex: 100, background: 'white', border: '1px solid #ddd', width: '100%', borderRadius: '4px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' },
-  dropdownItem: { padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee' },
+  dropdown: { 
+    position: 'absolute', 
+    zIndex: 100, 
+    background: 'white', 
+    border: '1px solid #ddd', 
+    width: '100%', 
+    borderRadius: '4px', 
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    maxHeight: '250px',
+    overflowY: 'auto'
+  },
+  dropdownItem: { 
+    padding: '10px 15px', 
+    cursor: 'pointer', 
+    borderBottom: '1px solid #eee',
+    transition: 'background 0.2s',
+    '&:hover': { backgroundColor: '#f8f9fa' }
+  },
   th: { padding: '10px', border: '1px solid #ddd' },
   td: { padding: '10px', border: '1px solid #ddd', textAlign: 'center' },
   btnBatal: { backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' },

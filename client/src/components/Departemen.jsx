@@ -10,6 +10,9 @@ const Departemen = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5; 
 
+// === TAMBAHKAN INI: State untuk menyimpan data user ===
+  const [user, setUser] = useState(null);
+
   const getDepartemen = async () => {
     try {
       const response = await fetch('http://localhost:5000/api/departemen');
@@ -24,10 +27,20 @@ const Departemen = () => {
     }
   };
 
-  useEffect(() => { getDepartemen(); }, []);
+useEffect(() => {
+    // === TAMBAHKAN INI: Ambil data user saat komponen dimuat ===
+    const loggedInUser = JSON.parse(localStorage.getItem("user")); 
+    setUser(loggedInUser);
+    
+    getDepartemen();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+// === TAMBAHKAN INI: Proteksi fungsi tambah agar hanya admin yang bisa eksekusi ===
+    if (user?.role !== 'admin') return alert("Anda tidak memiliki akses!");
+
     if (!codeDepartemen || !namaDepartemen || !limitBudget) return alert("Mohon isi semua data!");
 
     try {
@@ -60,6 +73,10 @@ const Departemen = () => {
   };
 
   const deleteDepartemen = async (id) => {
+
+// === TAMBAHKAN INI: Proteksi fungsi hapus ===
+    if (user?.role !== 'admin') return alert("Akses ditolak!");
+
     if (window.confirm("Yakin ingin menghapus departemen ini?")) {
       try {
         const response = await fetch(`http://localhost:5000/api/departemen/${id}`, { method: 'DELETE' });
@@ -93,7 +110,8 @@ const Departemen = () => {
         <h2 style={{ color: '#2c3e50' }}>🏢 Manajemen Departemen</h2>
       </header>
       
-      {/* <div style={styles.card}>
+      {user?.role === 'admin' && (
+      <div style={styles.card}>
         <h3 style={{ marginTop: 0 }}>Tambah Departemen Baru</h3>
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <input style={styles.input} type="text" placeholder="Kode (Contoh: IT)" value={codeDepartemen} onChange={(e) => setCodeDepartemen(e.target.value)} required />
@@ -101,7 +119,8 @@ const Departemen = () => {
           <input style={styles.input} type="number" placeholder="Limit Budget" value={limitBudget} onChange={(e) => setLimitBudget(e.target.value)} required />
           <button type="submit" style={styles.btnSimpan}>Simpan</button>
         </form>
-      </div> */}
+      </div>
+      )}
 
       <div style={styles.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -121,12 +140,16 @@ const Departemen = () => {
               <th style={styles.th}>Kode</th>
               <th style={styles.th}>Nama Departemen</th>
               <th style={styles.th}>Limit Bulanan (Rp)</th>
-              <th style={styles.th}>Aksi</th>
+              {user?.role === 'admin' && <th style={styles.th}>Aksi</th>}
             </tr>
           </thead>
           <tbody>
             {currentItems.length === 0 ? (
-              <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#95a5a6' }}>Data tidak ditemukan.</td></tr>
+             <tr>
+                <td colSpan={user?.role === 'admin' ? "5" : "4"} style={{ textAlign: 'center', padding: '30px', color: '#95a5a6' }}>
+                  Data tidak ditemukan.
+                </td>
+              </tr>
             ) : (
               currentItems.map((item, index) => (
                 <tr key={item.id_departemen} style={styles.tr}>
@@ -136,9 +159,11 @@ const Departemen = () => {
                   <td style={{ ...styles.td, fontWeight: 'bold', color: '#27ae60' }}>
                     {Number(item.limit_budget_pinjam || 0).toLocaleString('id-ID')}
                   </td>
-                  <td style={styles.td}>
-                    <button onClick={() => deleteDepartemen(item.id_departemen)} style={styles.btnHapus}>Hapus</button>
-                  </td>
+                  {user?.role === 'admin' && (
+                    <td style={styles.td}>
+                      <button onClick={() => deleteDepartemen(item.id_departemen)} style={styles.btnHapus}>Hapus</button>
+                    </td>
+                  )}
                 </tr>
               ))
             )}

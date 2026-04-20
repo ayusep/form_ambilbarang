@@ -49,26 +49,19 @@ const DataRequest = ({ user, filter }) => {
 const [editingCoa, setEditingCoa] = useState(null); // Menyimpan ID item yang diedit
 const [tempCoa, setTempCoa] = useState(""); // Menyimpan input sementara
 
-const handleUpdateCoa = async (id_permintaan) => { // Sesuai nama kolom di DB kamu
-  if (!tempCoa) {
-    alert("Pilih COA terlebih dahulu");
-    return;
-  }
-
+const handleUpdateCoa = async (id_permintaan_barang) => {
   try {
-    const response = await fetch(`http://localhost:5000/api/permintaan/detail/${id_permintaan}`, {
+    const response = await fetch(`http://localhost:5000/api/permintaan/detail/${id_permintaan_barang}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id_coa: tempCoa }) 
+      body: JSON.stringify({ id_coa: tempCoa }) // Kirim ID COA yang dipilih
     });
 
     if (response.ok) {
-      setEditingCoa(null); // Tutup mode edit
-      setTempCoa("");      // Reset temp
-      fetchData();         // Ambil data terbaru dari server agar nama_coa berubah
+      setEditingCoa(null);
+      fetchData(); 
     } else {
-      const errorData = await response.json();
-      alert("Gagal: " + errorData.error);
+      alert("Gagal mengupdate COA");
     }
   } catch (err) {
     console.error("Error update COA:", err);
@@ -304,56 +297,56 @@ const handleUpdateCoa = async (id_permintaan) => { // Sesuai nama kolom di DB ka
         ⚙️ {item.nama_mesin || '-'} <br /> 
         👷 {item.operator_maintenance || '-'} <br /> 
         
-        {/* BAGIAN COA */}
-    🏷️ {editingCoa === item.id_permintaan ? ( // Gunakan id_permintaan sesuai DB
-      <div style={{ display: 'inline-flex', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
-        <select 
-          value={tempCoa} 
-          onChange={(e) => setTempCoa(e.target.value)}
-          style={{ fontSize: '10px', padding: '2px', width: '120px', borderRadius: '4px' }}
-          autoFocus
-        >
-          <option value="">-- Pilih COA --</option>
-          {coaOptions.map(option => (
-            <option key={option.id_coa} value={option.id_coa}>
-              {option.kode_akun} - {option.coa}
-            </option>
-          ))}
-        </select>
-        <button 
-          onClick={() => handleUpdateCoa(item.id_permintaan)} // Kirim ID baris
-          style={{ padding: '2px 6px', cursor: 'pointer', background: '#27ae60', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '10px' }}
-        >
-          Simpan
-        </button>
-        <button 
-          onClick={() => { setEditingCoa(null); setTempCoa(""); }}
-          style={{ padding: '2px 6px', cursor: 'pointer', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '10px' }}
-        >
-          Batal
-        </button>
-      </div>
-    ) : (
+        {/* LOGIKA EDIT COA */}
+        {/* LOGIKA EDIT COA DENGAN SELECT DROPDOWN */}
+🏷️ {editingCoa === item.id_permintaan_barang ? (
+  <div style={{ display: 'inline-flex', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
+    <select 
+      value={tempCoa} 
+      onChange={(e) => setTempCoa(e.target.value)}
+      style={{ fontSize: '10px', padding: '2px', width: '120px', borderRadius: '4px' }}
+      autoFocus
+    >
+      <option value="">-- Pilih COA --</option>
+      {coaOptions.map(option => (
+        <option key={option.id_coa} value={option.id_coa}>
+          {option.kode_akun} - {option.coa}
+        </option>
+      ))}
+    </select>
+    <button 
+      onClick={() => handleUpdateCoa(item.id_permintaan_barang)}
+      style={{ padding: '2px 6px', cursor: 'pointer', background: '#27ae60', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '10px' }}
+    >
+      Simpan
+    </button>
+    <button 
+      onClick={() => setEditingCoa(null)}
+      style={{ padding: '2px 6px', cursor: 'pointer', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '10px' }}
+    >
+      Batal
+    </button>
+  </div>
+) : (
   <span 
-        style={{ 
-          cursor: (['admin', 'logistik'].includes(user?.role)) ? 'pointer' : 'default',
-          textDecoration: (['admin', 'logistik'].includes(user?.role)) ? 'underline dotted' : 'none',
-          color: (['admin', 'logistik'].includes(user?.role)) ? '#2980b9' : 'inherit',
-          fontWeight: 'bold'
-        }}
-        onClick={() => {
-          if (['admin', 'logistik'].includes(user?.role)) {
-            setEditingCoa(item.id_permintaan); // Set baris mana yang aktif edit
-            setTempCoa(item.coa || "");       // Masukkan ID COA lama ke dropdown
-          }
-        }}
-        title="Klik untuk edit COA"
-      >
-        {item.nama_coa || 'Pilih COA'}
-      </span>
-    )}
-  </small>
-</div>
+    style={{ 
+      cursor: (user?.role === 'admin' || user?.role === 'logistik') ? 'pointer' : 'default',
+      textDecoration: (user?.role === 'admin' || user?.role === 'logistik') ? 'underline dotted' : 'none',
+      color: (user?.role === 'admin' || user?.role === 'logistik') ? '#2980b9' : 'inherit'
+    }}
+    onClick={() => {
+      if (['admin', 'logistik'].includes(user?.role)) {
+        setEditingCoa(item.id_permintaan_barang);
+        setTempCoa(item.coa || ""); // Set ID awal (pastikan item.coa berisi id_coa)
+      }
+    }}
+    title="Klik untuk edit COA"
+  >
+    {item.nama_coa || 'Klik isi COA'}
+  </span>
+)}
+      </small>
+    </div>
   ))}
 </td>
 

@@ -80,19 +80,33 @@ const DataRequest = ({ user, filter }) => {
   }, 0);
 
   const filteredData = finalData.filter(fab => {
+    // 1. Filter Role Logistik
     if (user?.role === 'logistik') {
       if (!['Approved', 'Closed'].includes(fab.status_approval)) return false;
     }
-    const matchesStatus = statusFilter === 'All' || fab.status_approval === statusFilter;
-    const tglFormatted = new Date(fab.tgl_permintaan).toLocaleDateString('id-ID');
-    const matchesSearch =
-      fab.no_fab.toString().includes(searchTerm) ||
-      fab.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fab.nama_departemen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fab.mesin?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tglFormatted.includes(searchTerm);
 
-    return matchesStatus && matchesSearch;
+    // 2. Filter Status (Select Option)
+    const matchesStatus = statusFilter === 'All' || fab.status_approval === statusFilter;
+
+    // 3. Filter Search (Input Text)
+    const search = searchTerm.toLowerCase();
+    
+    // Cek apakah ada item di dalam FAB ini yang cocok dengan pencarian barang/mesin
+    const matchesItems = fab.allItems.some(item => 
+      item.nama_barang?.toLowerCase().includes(search) || 
+      item.nama_mesin?.toLowerCase().includes(search) ||
+      item.operator_maintenance?.toLowerCase().includes(search)
+    );
+
+    const tglFormatted = new Date(fab.tgl_permintaan).toLocaleDateString('id-ID');
+    
+    const matchesHeader =
+      fab.no_fab.toString().includes(search) ||
+      fab.nama?.toLowerCase().includes(search) ||
+      fab.nama_departemen?.toLowerCase().includes(search) ||
+      tglFormatted.includes(search);
+
+    return matchesStatus && (matchesHeader || matchesItems);
   });
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -139,7 +153,7 @@ const DataRequest = ({ user, filter }) => {
 
   .print-area{
     width:210mm;
-    min-height:99mm;
+    min-height:29,5mm;
     padding:2mm;
     margin:0;
     box-sizing:border-box;
@@ -162,7 +176,7 @@ const DataRequest = ({ user, filter }) => {
   }
 
   @page{
-    size:210mm 99mm;
+    size:210mm 29,5mm;
     margin:0;
   }
 
@@ -190,11 +204,15 @@ const DataRequest = ({ user, filter }) => {
           </select>
 
           <input
-            type="text"
-            placeholder="Cari FAB, Nama, Departemen..."
-            style={s.searchInput}
-            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-          />
+  type="text"
+  placeholder="Cari FAB, Nama, Barang, Mesin..."
+  style={s.searchInput}
+  value={searchTerm} // Tambahkan ini
+  onChange={(e) => { 
+    setSearchTerm(e.target.value); 
+    setCurrentPage(1); // Reset ke halaman 1 saat mencari
+  }}
+/>
         </div>
       </header>
 
@@ -209,7 +227,7 @@ const DataRequest = ({ user, filter }) => {
               <th style={s.th}>DETAIL PENGGUNAAN</th>
               <th style={s.th}>HARGA</th>
               <th style={s.th}>STATUS</th>
-              <th style={s.th}>KETERANGAN</th> {/* KOLOM BARU */}
+              <th style={s.th}>KETERANGAN</th> 
               {user?.role !== 'operasional' && <th style={s.th}>AKSI</th>}
             </tr>
           </thead>
@@ -257,7 +275,7 @@ const DataRequest = ({ user, filter }) => {
                 {user?.role !== 'operasional' && (
                   <td style={s.td}>
                     <div style={{ display: 'flex', gap: '5px' }}>
-                      {['manager', 'admin'].includes(user?.role) && fab.status_approval === 'Pending' && (
+                      {['approver', 'admin'].includes(user?.role) && fab.status_approval === 'Pending' && (
                         <>
                           <button onClick={() => handleActionFab(fab.no_fab, 'Approved')} style={s.btnA}>Approve</button>
                           <button onClick={() => handleActionFab(fab.no_fab, 'Rejected')} style={s.btnR}>Reject</button>
@@ -298,140 +316,82 @@ const DataRequest = ({ user, filter }) => {
 <div className="print-wrapper">
 <div className="print-area">
 
-{/* HEADER */}
-<table>
-<tbody>
+{/* HEADER - Tabel Utama */}
+<table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+  <tbody>
+    <tr>
+      {/* LOGO */}
+      <td style={{ width: '45px', textAlign: 'center', border: '1px solid black' }}>
+        <img 
+          src={`${window.location.origin}/BBP LOGO.png`} 
+          style={{ width: '30px' }} 
+          alt="Logo" 
+        />
+      </td>
 
-<tr>
+      {/* NAMA PERUSAHAAN */}
+      <td style={{ width: '250px', border: '1px solid black', padding: '5px' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '10px' }}>PT. BAHANA BHUMIPHALA PERSADA</div>
+        <div style={{ fontSize: '7px' }}>Jl. Raya Semarang - Pekalongan Km. 59 Batang</div>
+      </td>
 
-{/* LOGO */}
-<td style={{width:'50px', textAlign:'center'}}>
-  <img 
-    src={`${window.location.origin}/BBP LOGO.png`} 
-    style={{width:'20px'}} 
-    alt="Logo BBP"
-    onError={(e) => console.log("Gagal muat gambar:", e.target.src)}
-  />
-</td>
+      {/* KOLOM TANDA TANGAN DINAMIS (3 KOLOM) */}
+      {[
+        { label: 'User', jabatan: 'Staff' },
+        { label: 'Mengetahui', jabatan: 'Spv/Kabag/Mgr' },
+        { label: 'GNBB', jabatan: 'Staff Logistik' }
+      ].map((item) => (
+        <td 
+          key={item.label} 
+          rowSpan="2" 
+          style={{ 
+            textAlign: 'center', 
+            verticalAlign: 'top', 
+            width: '100px', // Sedikit diperlebar karena kolom berkurang
+            border: '1px solid black',
+            padding: '4px' 
+          }}
+        >
+          <div style={{ fontSize: '8px', fontWeight: 'bold' }}>{item.label},</div>
+          
+          {/* STEMPEL APPROVED */}
+          <div style={{
+            marginTop: '8px',
+            fontSize: '7px',
+            color: '#27ae60',
+            border: '1px solid #27ae60',
+            display: 'inline-block',
+            padding: '1px 4px',
+            fontWeight: 'bold',
+            transform: 'rotate(-5deg)',
+            borderRadius: '2px'
+          }}>
+            APPROVED
+          </div>
 
-{/* NAMA PERUSAHAAN */}
-<td style={{width:'360px'}}>
-<div style={{fontWeight:'bold',fontSize:'11px'}}>
-PT. BAHANA BHUMIPHALA PERSADA
-</div>
-<div style={{fontSize:'8px'}}>
-Jl. Raya Semarang - Pekalongan Km. 59 Batang
-</div>
-</td>
+          {/* JABATAN SESUAI REQUEST */}
+          <div style={{ fontSize: '7px', marginTop: '8px', fontWeight: '500' }}>
+            {item.jabatan}
+          </div>
+        </td>
+      ))}
+    </tr>
 
-{/* USER */}
-<td rowSpan="2" style={{textAlign:'center',verticalAlign:'top',width:'120px'}}>
-<div>User,</div>
-
-<div style={{
-marginTop:'10px',
-fontSize:'7px',
-color:'#27ae60',
-border:'1px solid #27ae60',
-display:'inline-block',
-padding:'2px 5px',
-transform:'rotate(-5deg)'
-}}>
-APPROVED
-</div>
-
-<div style={{fontSize:'7px',marginTop:'6px'}}>
-Coord/Kasie/Staff
-</div>
-</td>
-
-
-{/* CONTROLLER */}
-<td rowSpan="2" style={{textAlign:'center',verticalAlign:'top',width:'120px'}}>
-<div>Controller,</div>
-
-<div style={{
-marginTop:'10px',
-fontSize:'7px',
-color:'#27ae60',
-border:'1px solid #27ae60',
-display:'inline-block',
-padding:'2px 5px',
-transform:'rotate(-5deg)'
-}}>
-APPROVED
-</div>
-
-<div style={{fontSize:'7px',marginTop:'6px'}}>
-PIC Budget
-</div>
-</td>
-
-
-{/* MENGETAHUI */}
-<td rowSpan="2" style={{textAlign:'center',verticalAlign:'top',width:'120px'}}>
-<div>Mengetahui,</div>
-
-<div style={{
-marginTop:'10px',
-fontSize:'7px',
-color:'#27ae60',
-border:'1px solid #27ae60',
-display:'inline-block',
-padding:'2px 5px',
-transform:'rotate(-5deg)'
-}}>
-APPROVED
-</div>
-
-<div style={{fontSize:'7px',marginTop:'6px'}}>
-Spv/Kabag/Mgr
-</div>
-</td>
-
-
-{/* GNBB */}
-<td rowSpan="2" style={{textAlign:'center',verticalAlign:'top',width:'120px'}}>
-<div>GNBB,</div>
-
-<div style={{
-marginTop:'10px',
-fontSize:'7px',
-color:'#27ae60',
-border:'1px solid #27ae60',
-display:'inline-block',
-padding:'2px 5px',
-transform:'rotate(-5deg)'
-}}>
-APPROVED
-</div>
-
-<div style={{fontSize:'7px',marginTop:'6px'}}>
-Staff
-</div>
-</td>
-
-</tr>
-
-
-{/* BARIS FORM FAB */}
-<tr>
-
-<td colSpan="2"
-style={{
-background:'black',
-color:'white',
-textAlign:'center',
-fontWeight:'bold',
-fontSize:'14px',
-padding:'6px'
-}}>
-FORM AMBIL BARANG (FAB)
-</td>
-
-</tr>
-
-</tbody>
+    <tr>
+      {/* JUDUL FORM */}
+      <td colSpan="2" style={{
+        background: 'black',
+        color: 'white',
+        textAlign: 'center',
+        fontWeight: 'bold',
+        fontSize: '13px',
+        padding: '5px',
+        border: '1px solid black'
+      }}>
+        FORM AMBIL BARANG (FAB)
+      </td>
+    </tr>
+  </tbody>
 </table>
 
 {/* INFO */}

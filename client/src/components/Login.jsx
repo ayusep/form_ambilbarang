@@ -40,10 +40,10 @@ const Login = ({ onLoginSuccess }) => {
 
         <form onSubmit={handleLogin} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Email Address</label>
+            <label style={styles.label}>Username</label>
             <input 
-              type="email" 
-              placeholder="Masukkan Email..." 
+              type="text" 
+              placeholder="Username..." 
               required 
               value={email} 
               onChange={(e) => setEmail(e.target.value)}

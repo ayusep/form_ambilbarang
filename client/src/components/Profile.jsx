@@ -79,7 +79,7 @@ const Profile = ({ user }) => {
             <hr style={pStyles.divider} />
             <div style={pStyles.infoBox}>
               <div style={pStyles.infoItem}>
-                <span style={pStyles.label}>📧 Email</span>
+                <span style={pStyles.label}>📧 Username</span>
                 <span style={pStyles.value}>{profileData.email}</span>
               </div>
               <div style={pStyles.infoItem}>

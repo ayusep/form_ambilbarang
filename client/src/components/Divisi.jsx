@@ -11,6 +11,8 @@ const Divisi = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  const [user, setUser] = useState(null);
+
   const fetchData = async () => {
     try {
       const resDivisi = await fetch('http://localhost:5000/api/divisi');
@@ -26,12 +28,20 @@ const Divisi = () => {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+ useEffect(() => { 
+    // === TAMBAHKAN INI: Ambil data user dari localStorage ===
+    const loggedInUser = JSON.parse(localStorage.getItem("user"));
+    setUser(loggedInUser);
+    
+    fetchData(); 
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!codeDivisi || !namaDivisi || !idDepartemen) return alert("Mohon isi semua data!");
+    if (user?.role !== 'admin') return alert("Akses ditolak!");
 
+    if (!codeDivisi || !namaDivisi || !idDepartemen) return alert("Mohon isi semua data!");
+    
     try {
       const response = await fetch('http://localhost:5000/api/divisi', {
         method: 'POST',
@@ -59,6 +69,8 @@ const Divisi = () => {
   };
 
   const deleteDivisi = async (id) => {
+if (user?.role !== 'admin') return alert("Hanya admin yang boleh menghapus!");
+
     if (window.confirm("Yakin ingin menghapus divisi ini?")) {
       try {
         const response = await fetch(`http://localhost:5000/api/divisi/${id}`, { method: 'DELETE' });
@@ -90,20 +102,23 @@ const Divisi = () => {
         <h2 style={{ color: '#2c3e50' }}>🏢 Manajemen Divisi</h2>
       </header>
 
-      {/* <div style={styles.card}>
-        <h3 style={{ marginTop: 0 }}>Tambah Divisi Baru</h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <select style={styles.input} value={idDepartemen} onChange={(e) => setIdDepartemen(e.target.value)} required>
-            <option value="">-- Pilih Departemen --</option>
-            {departemenList.map(dept => (
-              <option key={dept.id_departemen} value={dept.id_departemen}>{dept.nama_departemen}</option>
-            ))}
-          </select>
-          <input style={styles.input} type="text" placeholder="Kode Divisi (Contoh: DIV01)" value={codeDivisi} onChange={(e) => setCodeDivisi(e.target.value)} required />
-          <input style={styles.input} type="text" placeholder="Nama Divisi" value={namaDivisi} onChange={(e) => setNamaDivisi(e.target.value)} required />
-          <button type="submit" style={styles.btnSimpan}>Simpan</button>
-        </form>
-      </div> */}
+{/* === TAMBAHKAN INI: Form Tambah hanya untuk Admin === */}
+      {user?.role === 'admin' && (
+        <div style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>Tambah Divisi Baru</h3>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <select style={styles.input} value={idDepartemen} onChange={(e) => setIdDepartemen(e.target.value)} required>
+              <option value="">-- Pilih Departemen --</option>
+              {departemenList.map(dept => (
+                <option key={dept.id_departemen} value={dept.id_departemen}>{dept.nama_departemen}</option>
+              ))}
+            </select>
+            <input style={styles.input} type="text" placeholder="Kode Divisi" value={codeDivisi} onChange={(e) => setCodeDivisi(e.target.value)} required />
+            <input style={styles.input} type="text" placeholder="Nama Divisi" value={namaDivisi} onChange={(e) => setNamaDivisi(e.target.value)} required />
+            <button type="submit" style={styles.btnSimpan}>Simpan</button>
+          </form>
+        </div>
+      )}
 
       <div style={styles.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -118,7 +133,7 @@ const Divisi = () => {
               <th style={styles.th}>Kode</th>
               <th style={styles.th}>Nama Divisi</th>
               <th style={styles.th}>Departemen</th>
-              <th style={styles.th}>Aksi</th>
+              {user?.role === 'admin' && <th style={styles.th}>Aksi</th>}
             </tr>
           </thead>
           <tbody>
@@ -128,9 +143,12 @@ const Divisi = () => {
                 <td style={styles.td}><strong>{item.code_divisi}</strong></td>
                 <td style={styles.td}>{item.nama_divisi}</td>
                 <td style={styles.td}><span style={styles.badge}>{item.nama_departemen || 'N/A'}</span></td>
-                <td style={styles.td}>
-                  <button onClick={() => deleteDivisi(item.id_divisi)} style={styles.btnHapus}>Hapus</button>
-                </td>
+                
+                {user?.role === 'admin' && (
+                  <td style={styles.td}>
+                    <button onClick={() => deleteDivisi(item.id_divisi)} style={styles.btnHapus}>Hapus</button>
+                  </td>
+                )}
               </tr>
             )) : (
               <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>Data tidak ditemukan</td></tr>

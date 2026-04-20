@@ -255,48 +255,36 @@ const res = await fetch(`http://localhost:5000/api/user/${currentUser.id_user}`,
             </select>
           </div>
         </div>
-            
-<div>
-  <label style={styles.label}>Divisi</label>
-  <select
-    style={styles.input}
-    value={currentUser.id_divisi || ''}
-    onChange={(e) => {
-      const selectedDivisiId = parseInt(e.target.value);
-      
-      // Karena 1 divisi = 1 departemen, kita langsung cari departemen pasangannya
-      const targetDept = deptOptions.find(d => Number(d.id_divisi) === selectedDivisiId);
-      
-      setCurrentUser({
-        ...currentUser,
-        id_divisi: selectedDivisiId,
-        // Langsung set id_departemen secara otomatis
-        id_departemen: targetDept ? targetDept.id_departemen : ''
-      });
-    }}
-  >
-    <option value="">-- Pilih Divisi --</option>
-    {divisiOptions.map(d => (
-      <option key={d.id_divisi} value={d.id_divisi}>{d.nama_divisi}</option>
-    ))}
-  </select>
-</div>
-
-<div>
-  <label style={styles.label}>Departemen (Otomatis)</label>
-  <select
-    style={{ ...styles.input, backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
-    value={currentUser.id_departemen || ''}
-    disabled={true} // Kunci karena sudah otomatis berdasarkan divisi
-  >
-    <option value="">-- Departemen Terpilih --</option>
-    {deptOptions.map(d => (
-      <option key={d.id_departemen} value={d.id_departemen}>
-        {d.nama_departemen}
-      </option>
-    ))}
-  </select>
-</div>
+              
+        {/* Row 4: Divisi & Departemen (Grid) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+          <div>
+            <label style={styles.label}>Divisi</label>
+            <select
+              style={styles.input}
+              value={currentUser.id_divisi || ''}
+              onChange={(e) => setCurrentUser({...currentUser, id_divisi: e.target.value})}
+            >
+              <option value="">-- Pilih --</option>
+              {divisiOptions.map(d => (
+                <option key={d.id_divisi} value={d.id_divisi}>{d.nama_divisi}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={styles.label}>Departemen</label>
+            <select
+              style={styles.input}
+              value={currentUser.id_departemen || ''}
+              onChange={(e) => setCurrentUser({...currentUser, id_departemen: e.target.value})}
+            >
+              <option value="">-- Pilih --</option>
+              {deptOptions.map(d => (
+                <option key={d.id_departemen} value={d.id_departemen}>{d.nama_departemen}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         {/* Row 5: Password */}
         <div style={{ marginBottom: '15px' }}>
