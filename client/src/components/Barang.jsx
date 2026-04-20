@@ -6,6 +6,10 @@ const Barang = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [importing, setImporting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  
+  // State Baru untuk Edit
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentId, setCurrentId] = useState(null);
 
   const [formData, setFormData] = useState({
     kode_sap: '',
@@ -31,18 +35,49 @@ const Barang = () => {
 
   useEffect(() => { getBarang(); }, []);
 
+  // Fungsi untuk membuka modal Edit
+  const handleEdit = (item) => {
+    setIsEditing(true);
+    setCurrentId(item.id_barang);
+    setFormData({
+      kode_sap: item.kode_sap,
+      nama_barang: item.nama_barang,
+      harga_sap: item.harga_sap,
+      satuan: item.satuan,
+      item_groub: item.item_groub,
+      stok: item.stok
+    });
+    setShowModal(true);
+  };
+
+  // Reset Form saat tutup modal
+  const closeModal = () => {
+    setShowModal(false);
+    setIsEditing(false);
+    setCurrentId(null);
+    setFormData({ kode_sap: '', nama_barang: '', harga_sap: '', satuan: '', item_groub: 'SOP', stok: 0 });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Tentukan URL dan Method berdasarkan mode (Edit atau Tambah)
+    const url = isEditing 
+      ? `http://localhost:5000/api/barang/update/${currentId}` 
+      : 'http://localhost:5000/api/barang/add';
+    
+    const method = isEditing ? 'PUT' : 'POST';
+
     try {
-      const response = await fetch('http://localhost:5000/api/barang/add', {
-        method: 'POST',
+      const response = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
+
       if (response.ok) {
-        alert("Barang berhasil ditambah!");
-        setShowModal(false);
-        setFormData({ kode_sap: '', nama_barang: '', harga_sap: '', satuan: '', item_groub: 'SOP', stok: 0 });
+        alert(isEditing ? "Barang berhasil diperbarui!" : "Barang berhasil ditambah!");
+        closeModal();
         getBarang();
       } else {
         const err = await response.json();
@@ -53,11 +88,9 @@ const Barang = () => {
     }
   };
 
-  // FIX: Handle Import Excel
   const handleImportExcel = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setImporting(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -87,15 +120,8 @@ const Barang = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  // FIX: Download Template
   const downloadTemplate = () => {
-    const template = [{
-      kode_sap: "SAP123",
-      nama_barang: "Contoh Barang",
-      harga_sap: 5000,
-      item_groub: "SOP",
-      satuan: "PCS",
-    }];
+    const template = [{ kode_sap: "SAP123", nama_barang: "Contoh Barang", harga_sap: 5000, item_groub: "SOP", satuan: "PCS" }];
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
@@ -144,7 +170,7 @@ const Barang = () => {
       {showModal && (
         <div style={s.modalOverlay}>
           <div style={s.modalContent}>
-            <h3>Tambah Barang Baru</h3>
+            <h3>{isEditing ? 'Edit Barang' : 'Tambah Barang Baru'}</h3>
             <form onSubmit={handleSubmit} style={s.formGrid}>
               <input type="text" placeholder="Kode SAP" required value={formData.kode_sap} onChange={e => setFormData({ ...formData, kode_sap: e.target.value })} style={s.input} />
               <input type="text" placeholder="Nama Barang" required value={formData.nama_barang} onChange={e => setFormData({ ...formData, nama_barang: e.target.value })} style={s.input} />
@@ -153,12 +179,12 @@ const Barang = () => {
               <select value={formData.item_groub} onChange={e => setFormData({ ...formData, item_groub: e.target.value })} style={s.input}>
                 <option value="SOP">SOP</option>
                 <option value="PAK">PAK</option>
-                <option value="ATK">ATK</option>
-                <option value="SPR">SPR</option>
+                <option value="ATK & Rumah Tangga">ATK & Rumah Tangga</option>
+                <option value="Sparepart">Sparepart</option>
               </select>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button type="submit" style={s.btnSave}>Simpan</button>
-                <button type="button" onClick={() => setShowModal(false)} style={s.btnCancel}>Batal</button>
+                <button type="submit" style={s.btnSave}>{isEditing ? 'Update' : 'Simpan'}</button>
+                <button type="button" onClick={closeModal} style={s.btnCancel}>Batal</button>
               </div>
             </form>
           </div>
@@ -174,6 +200,7 @@ const Barang = () => {
               <th style={s.th}>Nama Barang</th>
               <th style={s.th}>Group</th>
               <th style={{ ...s.th, textAlign: 'right' }}>Harga</th>
+              <th style={{ ...s.th, textAlign: 'center' }}>Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -184,6 +211,9 @@ const Barang = () => {
                 <td style={s.td}>{item.nama_barang}</td>
                 <td style={s.td}><span style={s.groupBadge}>{item.item_groub}</span></td>
                 <td style={{ ...s.td, textAlign: 'right' }}>{Number(item.harga_sap).toLocaleString('id-ID')}</td>
+                <td style={{ ...s.td, textAlign: 'center' }}>
+                  <button onClick={() => handleEdit(item)} style={s.btnEdit}>✏️ Edit</button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -192,11 +222,7 @@ const Barang = () => {
 
       <div style={{ marginTop: '15px', display: 'flex', gap: '5px' }}>
         {[...Array(totalPages)].map((_, i) => (
-          <button 
-            key={i} 
-            onClick={() => setCurrentPage(i + 1)} 
-            style={currentPage === i + 1 ? s.pageBtnActive : s.pageBtn}
-          >
+          <button key={i} onClick={() => setCurrentPage(i + 1)} style={currentPage === i + 1 ? s.pageBtnActive : s.pageBtn}>
             {i + 1}
           </button>
         ))}
@@ -205,11 +231,11 @@ const Barang = () => {
   );
 };
 
-// Styles (sama seperti sebelumnya)
 const s = {
   btnAdd: { padding: '10px 15px', backgroundColor: '#8e44ad', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' },
   btnSave: { padding: '10px 20px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
   btnCancel: { padding: '10px 20px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+  btnEdit: { padding: '5px 10px', backgroundColor: '#f39c12', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   modalContent: { backgroundColor: 'white', padding: '25px', borderRadius: '8px', width: '400px' },
   formGrid: { display: 'flex', flexDirection: 'column', gap: '12px' },

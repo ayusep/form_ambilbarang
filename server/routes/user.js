@@ -36,29 +36,54 @@ router.delete('/:id', async (req, res) => {
 });
 
 // server\routes\user.js (Bagian PUT /:id)
+// server\routes\user.js (Bagian PUT /:id yang sudah diperbaiki)
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { nama, email, role, no_telp, id_divisi, id_departemen, password } = req.body;
 
   try {
+    // 1. Validasi Tipe Data: Pastikan ID adalah angka atau NULL, bukan string kosong ""
+    const cleanId = parseInt(id);
+    const cleanDivisi = id_divisi ? parseInt(id_divisi) : null;
+    const cleanDept = id_departemen ? parseInt(id_departemen) : null;
+
+    // 2. Cek apakah user memang ada sebelum update
+    const checkUser = await pool.query("SELECT id_user FROM users WHERE id_user = $1", [cleanId]);
+    if (checkUser.rows.length === 0) {
+      return res.status(404).json({ error: "User tidak ditemukan" });
+    }
+
     let query;
     let params;
 
-    // Logika ini memastikan id_departemen yang didapat dari sinkronisasi frontend tersimpan
+    // 3. Logika Update dengan Password atau Tanpa Password
     if (password && password.trim() !== "") {
       const hashedPassword = hashPassword(password); 
-      query = `UPDATE users SET nama=$1, email=$2, role=$3, no_telp=$4, id_divisi=$5, id_departemen=$6, password=$7 WHERE id_user=$8`;
-      params = [nama, email, role, no_telp, id_divisi, id_departemen, hashedPassword, id];
+      query = `
+        UPDATE users 
+        SET nama=$1, email=$2, role=$3, no_telp=$4, id_divisi=$5, id_departemen=$6, password=$7 
+        WHERE id_user=$8`;
+      params = [nama, email, role, no_telp, cleanDivisi, cleanDept, hashedPassword, cleanId];
     } else {
-      query = `UPDATE users SET nama=$1, email=$2, role=$3, no_telp=$4, id_divisi=$5, id_departemen=$6 WHERE id_user=$7`;
-      params = [nama, email, role, no_telp, id_divisi, id_departemen, id];
+      query = `
+        UPDATE users 
+        SET nama=$1, email=$2, role=$3, no_telp=$4, id_divisi=$5, id_departemen=$6 
+        WHERE id_user=$7`;
+      params = [nama, email, role, no_telp, cleanDivisi, cleanDept, cleanId];
     }
 
     await pool.query(query, params);
-    res.json({ success: true });
+    res.json({ success: true, message: "Data berhasil diperbarui" });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Gagal menyimpan perubahan ke database." });
+    // Tampilkan detail error di terminal VS Code agar Ayu bisa baca penyebabnya
+    console.error("DATABASE ERROR:", err.message);
+    
+    // Kirim pesan yang lebih spesifik ke frontend
+    res.status(500).json({ 
+      error: "Gagal menyimpan perubahan.", 
+      detail: err.message 
+    });
   }
 });
 

@@ -17,7 +17,6 @@ const UserList = () => {
   const [divisiOptions, setDivisiOptions] = useState([]);
   const [deptOptions, setDeptOptions] = useState([]);
 
-  // Bungkus fetchUsers dengan useCallback agar stabil saat dipanggil di useEffect
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -33,7 +32,6 @@ const UserList = () => {
   }, []);
 
   useEffect(() => {
-    // Jalankan semua fetch secara paralel
     const fetchMasterData = async () => {
       try {
         const [resDiv, resDept] = await Promise.all([
@@ -52,7 +50,6 @@ const UserList = () => {
     fetchMasterData();
   }, [fetchUsers]);
 
-  // Reset page kalau search term berubah
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
@@ -64,9 +61,7 @@ const UserList = () => {
           method: 'DELETE'
         });
         const data = await res.json();
-
         if (!res.ok) throw new Error(data.message || "Gagal menghapus");
-
         alert("User berhasil dihapus");
         fetchUsers();
       } catch (err) {
@@ -75,10 +70,16 @@ const UserList = () => {
     }
   };
 
-  const handleEditClick = (user) => {
-    setCurrentUser({ ...user, password: '' });
-    setIsEditModalOpen(true);
-  };
+const handleEditClick = (user) => {
+  setCurrentUser({ 
+    ...user, 
+    password: '',
+    // Pastikan id_divisi dan id_departemen terbawa
+    id_divisi: user.id_divisi || '',
+    id_departemen: user.id_departemen || ''
+  });
+  setIsEditModalOpen(true);
+};
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -91,15 +92,17 @@ const UserList = () => {
       id_departemen: currentUser.id_departemen,
     };
 
-    if (currentUser.password) payload.password = currentUser.password;
+    // Hanya kirim password jika diisi (untuk ganti password)
+    if (currentUser.password && currentUser.password.trim() !== "") {
+      payload.password = currentUser.password;
+    }
 
     try {
-      // BAGIAN YANG BENAR
-const res = await fetch(`http://localhost:5000/api/user/${currentUser.id_user}`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(payload)
-});
+      const res = await fetch(`http://localhost:5000/api/user/${currentUser.id_user}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Gagal update");
@@ -108,7 +111,7 @@ const res = await fetch(`http://localhost:5000/api/user/${currentUser.id_user}`,
       setIsEditModalOpen(false);
       fetchUsers();
     } catch (err) {
-      alert(err.message);
+      alert("❌ " + err.message);
     }
   };
 
@@ -144,7 +147,7 @@ const res = await fetch(`http://localhost:5000/api/user/${currentUser.id_user}`,
         <div style={styles.searchWrapper}>
           <input
             type="text"
-            placeholder="Cari nama, divisi, departemen..."
+            placeholder="Cari nama, divisi..."
             style={styles.searchInput}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -157,7 +160,7 @@ const res = await fetch(`http://localhost:5000/api/user/${currentUser.id_user}`,
           <thead>
             <tr style={styles.headerRow}>
               <th style={styles.th}>NO</th>
-              <th style={styles.th}>ID USER</th>
+              <th style={styles.th}>ID</th>
               <th style={styles.th}>NAMA</th>
               <th style={styles.th}>USERNAME</th>
               <th style={styles.th}>NO. TELP</th>
@@ -172,18 +175,13 @@ const res = await fetch(`http://localhost:5000/api/user/${currentUser.id_user}`,
               <tr><td colSpan="9" style={{ textAlign: 'center', padding: '30px' }}>Memuat data...</td></tr>
             ) : currentUsers.length > 0 ? (
               currentUsers.map((u, index) => (
-                <tr 
-                  key={u.id_user} 
-                  style={index % 2 === 0 ? styles.evenRow : styles.oddRow}
-                >
+                <tr key={u.id_user} style={index % 2 === 0 ? styles.evenRow : styles.oddRow}>
                   <td style={styles.td}>{indexOfFirstItem + index + 1}</td>
                   <td style={styles.td}><strong>#{u.id_user}</strong></td>
                   <td style={styles.td}>{u.nama}</td>
                   <td style={styles.td}>{u.email}</td>
                   <td style={styles.td}>{u.no_telp || '-'}</td>
-                  <td style={styles.td}>
-                    <span style={roleBadge(u.role)}>{u.role}</span>
-                  </td>
+                  <td style={styles.td}><span style={roleBadge(u.role)}>{u.role}</span></td>
                   <td style={styles.td}>{u.nama_divisi || '-'}</td>
                   <td style={styles.td}>{u.nama_departemen || '-'}</td>
                   <td style={styles.td}>
@@ -201,195 +199,131 @@ const res = await fetch(`http://localhost:5000/api/user/${currentUser.id_user}`,
         </table>
       </div>
 
-    {/* --- MODAL EDIT --- */}
-{isEditModalOpen && currentUser && (
-  <div style={styles.modalOverlay}>
-    <div style={styles.modalContent}>
-      <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Edit Data User</h3>
-      <form onSubmit={handleUpdate}>
-        
-        {/* Row 1: Nama */}
-        <div style={{ marginBottom: '15px' }}>
-          <label style={styles.label}>Nama Lengkap</label>
-          <input 
-            style={styles.input} 
-            value={currentUser.nama || ''} 
-            onChange={(e) => setCurrentUser({...currentUser, nama: e.target.value})}
-          />
-        </div>
+      {/* --- MODAL EDIT --- */}
+      {isEditModalOpen && currentUser && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>✏️ Edit Data User</h3>
+            <form onSubmit={handleUpdate}>
+              
+              <div style={{ marginBottom: '12px' }}>
+                <label style={styles.label}>Nama Lengkap</label>
+                <input required style={styles.input} value={currentUser.nama || ''} 
+                  onChange={(e) => setCurrentUser({...currentUser, nama: e.target.value})} />
+              </div>
 
-        {/* Row 2: Username/Email */}
-        <div style={{ marginBottom: '15px' }}>
-          <label style={styles.label}>Username</label>
-          <input 
-            style={styles.input} 
-            value={currentUser.email || ''} 
-            onChange={(e) => setCurrentUser({...currentUser, email: e.target.value})}
-          />
-        </div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={styles.label}>Username / Email</label>
+                <input required style={styles.input} value={currentUser.email || ''} 
+                  onChange={(e) => setCurrentUser({...currentUser, email: e.target.value})} />
+              </div>
 
-        {/* Row 3: No. Telp & Role (Grid) - Diberi Margin Bottom agar tidak nempel ke bawah */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-          <div>
-            <label style={styles.label}>No. Telepon</label>
-            <input 
-              style={styles.input} 
-              value={currentUser.no_telp || ''} 
-              onChange={(e) => setCurrentUser({...currentUser, no_telp: e.target.value})}
-            />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '12px' }}>
+                <div>
+                  <label style={styles.label}>No. Telepon</label>
+                  <input style={styles.input} value={currentUser.no_telp || ''} 
+                    onChange={(e) => setCurrentUser({...currentUser, no_telp: e.target.value})} />
+                </div>
+                <div>
+                  <label style={styles.label}>Role</label>
+                  <select style={styles.input} value={currentUser.role || ''}
+                    onChange={(e) => setCurrentUser({...currentUser, role: e.target.value})}>
+                    <option value="admin">Admin</option>
+                    <option value="approver">Approver</option>
+                    <option value="logistik">Logistik</option>
+                    <option value="operasional">Operasional</option>
+                    <option value="supporting">Supporting</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '12px' }}>
+                <div>
+                  <label style={styles.label}>Divisi</label>
+                  <select style={styles.input} value={currentUser.id_divisi || ''}
+                    onChange={(e) => setCurrentUser({...currentUser, id_divisi: e.target.value})}>
+                    <option value="">-- Pilih --</option>
+                    {divisiOptions.map(d => (
+                      <option key={d.id_divisi} value={d.id_divisi}>{d.nama_divisi}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={styles.label}>Departemen</label>
+                  <select style={styles.input} value={currentUser.id_departemen || ''}
+                    onChange={(e) => setCurrentUser({...currentUser, id_departemen: e.target.value})}>
+                    <option value="">-- Pilih --</option>
+                    {deptOptions.map(d => (
+                      <option key={d.id_departemen} value={d.id_departemen}>{d.nama_departemen}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={styles.label}>Password Baru (Opsional)</label>
+                <input type="password" style={styles.input} placeholder="Kosongkan jika tidak ingin ganti"
+                  value={currentUser.password}
+                  onChange={(e) => setCurrentUser({...currentUser, password: e.target.value})} />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={() => setIsEditModalOpen(false)} style={styles.btnCancel}>Batal</button>
+                <button type="submit" style={styles.btnSave}>Simpan Perubahan</button>
+              </div>
+            </form>
           </div>
-          
-          <div>
-            <label style={styles.label}>Role</label>
-            <select
-              style={styles.input}
-              value={currentUser.role || ''}
-              onChange={(e) => setCurrentUser({...currentUser, role: e.target.value})}
-            >
-              <option value="">-- Pilih --</option>
-              <option value="admin">Admin</option>
-              <option value="approver">Approver</option>
-              <option value="logistik">Logistik</option>
-              <option value="operasional">Operasional</option>
-              <option value="supporting">Supporting</option>
-            </select>
-          </div>
         </div>
-            
-<div>
-  <label style={styles.label}>Divisi</label>
-  <select
-    style={styles.input}
-    value={currentUser.id_divisi || ''}
-    onChange={(e) => {
-      const selectedDivisiId = parseInt(e.target.value);
-      
-      // Karena 1 divisi = 1 departemen, kita langsung cari departemen pasangannya
-      const targetDept = deptOptions.find(d => Number(d.id_divisi) === selectedDivisiId);
-      
-      setCurrentUser({
-        ...currentUser,
-        id_divisi: selectedDivisiId,
-        // Langsung set id_departemen secara otomatis
-        id_departemen: targetDept ? targetDept.id_departemen : ''
-      });
-    }}
-  >
-    <option value="">-- Pilih Divisi --</option>
-    {divisiOptions.map(d => (
-      <option key={d.id_divisi} value={d.id_divisi}>{d.nama_divisi}</option>
-    ))}
-  </select>
-</div>
-
-<div>
-  <label style={styles.label}>Departemen (Otomatis)</label>
-  <select
-    style={{ ...styles.input, backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
-    value={currentUser.id_departemen || ''}
-    disabled={true} // Kunci karena sudah otomatis berdasarkan divisi
-  >
-    <option value="">-- Departemen Terpilih --</option>
-    {deptOptions.map(d => (
-      <option key={d.id_departemen} value={d.id_departemen}>
-        {d.nama_departemen}
-      </option>
-    ))}
-  </select>
-</div>
-
-        {/* Row 5: Password */}
-        <div style={{ marginBottom: '15px' }}>
-          <label style={styles.label}>Password (Opsional)</label>
-          <input 
-            type="password"
-            style={styles.input} 
-            placeholder="Isi jika ingin ganti password"
-            onChange={(e) => setCurrentUser({...currentUser, password: e.target.value})}
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-          <button type="button" onClick={() => setIsEditModalOpen(false)} style={styles.btnCancel}>Batal</button>
-          <button type="submit" style={styles.btnSave}>Update Data</button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
+      )}
 
       {/* PAGINATION */}
       {!loading && totalPages > 1 && (
         <div style={styles.paginationContainer}>
-          <button 
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
-            disabled={currentPage === 1}
-            style={currentPage === 1 ? styles.pageBtnDisabled : styles.pageBtn}
-          > Prev </button>
-          
+          <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+            style={currentPage === 1 ? styles.pageBtnDisabled : styles.pageBtn}> Prev </button>
           {[...Array(totalPages)].map((_, i) => (
-            <button 
-              key={i + 1} 
-              onClick={() => setCurrentPage(i + 1)}
-              style={currentPage === i + 1 ? styles.pageBtnActive : styles.pageBtn}
-            > {i + 1} </button>
+            <button key={i + 1} onClick={() => setCurrentPage(i + 1)}
+              style={currentPage === i + 1 ? styles.pageBtnActive : styles.pageBtn}> {i + 1} </button>
           ))}
-
-          <button 
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
-            disabled={currentPage === totalPages}
-            style={currentPage === totalPages ? styles.pageBtnDisabled : styles.pageBtn}
-          > Next </button>
+          <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+            style={currentPage === totalPages ? styles.pageBtnDisabled : styles.pageBtn}> Next </button>
         </div>
       )}
     </div>
   );
 };
 
-// Helper function untuk Badge
 const roleBadge = (role) => {
   const roleLower = role?.toLowerCase();
-  const colors = {
-    admin: '#e74c3c',
-    approver: '#f39c12',
-    logistik: '#27ae60',
-    operasional: '#3498db'
-  };
-  
+  const colors = { admin: '#e74c3c', approver: '#f39c12', logistik: '#27ae60', operasional: '#3498db' };
   return {
-    padding: '4px 10px',
-    borderRadius: '12px',
-    fontSize: '11px',
-    fontWeight: '600',
-    backgroundColor: colors[roleLower] || '#95a5a6',
-    color: 'white',
-    textTransform: 'uppercase'
+    padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '600',
+    backgroundColor: colors[roleLower] || '#95a5a6', color: 'white', textTransform: 'uppercase'
   };
 };
 
 const styles = {
   container: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
   header: { display: 'flex', justifyContent: 'space-between', marginBottom: '20px' },
-  searchInput: { padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', width: '250px' },
+  searchInput: { padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', width: '250px', outline: 'none' },
   table: { width: '100%', borderCollapse: 'collapse' },
   headerRow: { backgroundColor: '#f8f9fa', textAlign: 'left' },
   th: { padding: '12px', borderBottom: '2px solid #eee', fontSize: '12px', color: '#7f8c8d' },
   td: { padding: '12px', borderBottom: '1px solid #eee', fontSize: '13px' },
   evenRow: { backgroundColor: '#fafafa' },
   oddRow: { backgroundColor: '#ffffff' },
-  btnEdit: { padding: '5px 10px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-  btnDelete: { padding: '5px 10px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  modalContent: { backgroundColor: 'white', padding: '25px', borderRadius: '8px', width: '450px' },
-  input: { width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #ddd' },
-  label: { display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: 'bold' },
-  btnSave: { padding: '8px 16px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
-  btnCancel: { padding: '8px 16px', backgroundColor: '#bdc3c7', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+  btnEdit: { padding: '6px 12px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' },
+  btnDelete: { padding: '6px 12px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  modalContent: { backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '480px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' },
+  input: { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box' },
+  label: { display: 'block', marginBottom: '6px', fontSize: '12px', fontWeight: 'bold', color: '#34495e' },
+  btnSave: { padding: '10px 20px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' },
+  btnCancel: { padding: '10px 20px', backgroundColor: '#bdc3c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
   paginationContainer: { display: 'flex', justifyContent: 'center', gap: '5px', marginTop: '20px' },
-  pageBtn: { padding: '5px 10px', border: '1px solid #ddd', cursor: 'pointer', borderRadius: '4px' },
+  pageBtn: { padding: '5px 10px', border: '1px solid #ddd', cursor: 'pointer', borderRadius: '4px', backgroundColor: 'white' },
   pageBtnActive: { padding: '5px 10px', backgroundColor: '#2c3e50', color: 'white', border: 'none', borderRadius: '4px' },
-  pageBtnDisabled: { padding: '5px 10px', color: '#ccc', cursor: 'not-allowed' }
+  pageBtnDisabled: { padding: '5px 10px', color: '#ccc', cursor: 'not-allowed', backgroundColor: '#f9f9f9', border: '1px solid #eee' }
 };
 
 export default UserList;

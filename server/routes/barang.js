@@ -79,4 +79,45 @@ router.post('/import', async (req, res) => {
   }
 });
 
+// 5. Update Barang (Tambahkan ini sebelum module.exports)
+router.put('/update/:id', async (req, res) => {
+  const { id } = req.params;
+  const { kode_sap, nama_barang, harga_sap, item_groub, satuan, stok } = req.body;
+
+  try {
+    // 1. Validasi: Cek apakah kode_sap baru sudah dipakai barang lain (opsional tapi disarankan)
+    const checkDuplicate = await pool.query(
+      'SELECT id_barang FROM barang WHERE kode_sap = $1 AND id_barang != $2',
+      [kode_sap, id]
+    );
+
+    if (checkDuplicate.rows.length > 0) {
+      return res.status(400).json({ error: "Kode SAP sudah digunakan oleh barang lain!" });
+    }
+
+    // 2. Eksekusi Update
+    const result = await pool.query(
+      `UPDATE barang 
+       SET kode_sap = $1, 
+           nama_barang = $2, 
+           harga_sap = $3, 
+           item_groub = $4, 
+           satuan = $5, 
+           stok = $6 
+       WHERE id_barang = $7 
+       RETURNING *`,
+      [kode_sap, nama_barang, harga_sap, item_groub, satuan, stok, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Barang tidak ditemukan" });
+    }
+
+    res.json({ message: "Update Berhasil", data: result.rows[0] });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Gagal memperbarui data" });
+  }
+});
+
 module.exports = router;
