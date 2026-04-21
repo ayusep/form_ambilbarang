@@ -125,6 +125,10 @@ const handleUpdateCoa = async (id_permintaan) => { // Sesuai nama kolom di DB ka
     return sum;
   }, 0);
 
+const uniqueCoaOptions = Array.from(
+    new Map(coaOptions.map(item => [`${item.kode_akun}-${item.coa}`, item])).values()
+  ).sort((a, b) => a.kode_akun.localeCompare(b.kode_akun)); // Opsional: urutkan berdasarkan kode
+
   const filteredData = finalData.filter(fab => {
     // 1. Filter Role Logistik
     if (user?.role === 'logistik') {
@@ -308,18 +312,18 @@ const handleUpdateCoa = async (id_permintaan) => { // Sesuai nama kolom di DB ka
     🏷️ {editingCoa === item.id_permintaan ? ( // Gunakan id_permintaan sesuai DB
       <div style={{ display: 'inline-flex', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
         <select 
-          value={tempCoa} 
-          onChange={(e) => setTempCoa(e.target.value)}
-          style={{ fontSize: '10px', padding: '2px', width: '120px', borderRadius: '4px' }}
-          autoFocus
-        >
-          <option value="">-- Pilih COA --</option>
-          {coaOptions.map(option => (
-            <option key={option.id_coa} value={option.id_coa}>
-              {option.kode_akun} - {option.coa}
-            </option>
-          ))}
-        </select>
+  value={tempCoa} 
+  onChange={(e) => setTempCoa(e.target.value)}
+  style={{ fontSize: '10px', padding: '2px', width: '120px', borderRadius: '4px' }}
+  autoFocus
+>
+  <option value="">-- Pilih COA --</option>
+  {uniqueCoaOptions.map(option => (
+    <option key={option.id_coa} value={option.id_coa}>
+      {option.kode_akun} - {option.coa}
+    </option>
+  ))}
+</select>
         <button 
           onClick={() => handleUpdateCoa(item.id_permintaan)} // Kirim ID baris
           style={{ padding: '2px 6px', cursor: 'pointer', background: '#27ae60', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '10px' }}

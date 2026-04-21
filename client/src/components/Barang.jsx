@@ -146,12 +146,12 @@ const Barang = () => {
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <header style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <h2 style={{ margin: 0 }}>Master Barang (SAP)</h2>
+          <h2 style={{ margin: 0 }}>Data Barang</h2>
           <p style={{ color: '#666' }}>Manajemen data material.</p>
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setShowModal(true)} style={s.btnAdd}>➕ Tambah Manual</button>
+          <button onClick={() => setShowModal(true)} style={s.btnAdd}>➕ Tambah</button>
           <button onClick={downloadTemplate} style={s.btnDownload}>📥 Template</button>
           <label style={importing ? s.btnImportDisabled : s.btnImport}>
             {importing ? '⏳...' : '📤 Import'}
@@ -220,13 +220,28 @@ const Barang = () => {
         </table>
       </div>
 
-      <div style={{ marginTop: '15px', display: 'flex', gap: '5px' }}>
-        {[...Array(totalPages)].map((_, i) => (
-          <button key={i} onClick={() => setCurrentPage(i + 1)} style={currentPage === i + 1 ? s.pageBtnActive : s.pageBtn}>
-            {i + 1}
-          </button>
-        ))}
-      </div>
+      {/* Kontrol Pagination Baru */}
+<div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
+  <button 
+    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+    disabled={currentPage === 1}
+    style={currentPage === 1 ? s.btnNavDisabled : s.btnNav}
+  >
+    ‹ Previous
+  </button>
+
+  <span style={{ fontWeight: 'bold', color: '#2c3e50' }}>
+    Halaman {currentPage} dari {totalPages || 1}
+  </span>
+
+  <button 
+    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+    disabled={currentPage === totalPages || totalPages === 0}
+    style={(currentPage === totalPages || totalPages === 0) ? s.btnNavDisabled : s.btnNav}
+  >
+    Next ›
+  </button>
+</div>
     </div>
   );
 };
@@ -250,7 +265,28 @@ const s = {
   td: { padding: '15px', borderBottom: '1px solid #eee' },
   groupBadge: { backgroundColor: '#f1c40f', color: '#000', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' },
   pageBtn: { padding: '5px 10px', cursor: 'pointer' },
-  pageBtnActive: { padding: '5px 10px', backgroundColor: '#2c3e50', color: 'white' }
+  pageBtnActive: { padding: '5px 10px', backgroundColor: '#2c3e50', color: 'white' },
+
+btnNav: {
+    padding: '8px 16px',
+    backgroundColor: '#3498db',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    transition: '0.3s'
+  },
+  btnNavDisabled: {
+    padding: '8px 16px',
+    backgroundColor: '#ecf0f1',
+    color: '#bdc3c7',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'not-allowed',
+    fontWeight: 'bold'
+  }
+
 };
 
 export default Barang;

@@ -180,7 +180,7 @@ function App() {
   📂 Data Divisi</div>
   
   <div onClick={() => setActiveMenu("barang")} style={menuStyle("barang")}>
-    📦 Stok Barang (SAP)
+    📦 Data Barang
   </div>
 
   <div style={{ margin: '15px 0', borderTop: '1px solid #34495e' }}></div>
