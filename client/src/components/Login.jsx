@@ -66,7 +66,7 @@ const Login = ({ onLoginSuccess }) => {
                 onClick={() => setShowPassword(!showPassword)} 
                 style={styles.eyeIcon}
               >
-                {showPassword ? "🙈" : "👁️"}
+                {showPassword ? "👁️‍🗨️" : "👁️"}
               </span>
             </div>
           </div>

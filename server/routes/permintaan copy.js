@@ -47,24 +47,39 @@ router.post('/', async (req, res) => {
       throw new Error(`Limit Budget Tidak Mencukupi! Sisa: Rp ${(limit - currentUsage).toLocaleString('id-ID')}`);
     }
 
-    // --- 2. GENERATE NOMOR FAB ---
-    const yy = now.getFullYear().toString().slice(-2);
-    const mm = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = yy + mm;
+    // --- 2. GENERATE NOMOR FAB (Format: YYMM + Urutan) ---
+const yy = now.getFullYear().toString().slice(-2); 
+const mm = (now.getMonth() + 1).toString().padStart(2, '0'); 
+const prefix = yy + mm; // Hasil: "2604"
 
-    const lastFabResult = await client.query(
-      `SELECT MAX(no_fab) as max_fab FROM permintaan_barang WHERE CAST(no_fab AS TEXT) LIKE $1`,
-      [`${prefix}%`] // Perbaikan: Gunakan prefix YYMM agar filter lebih akurat
-    );
+const lastFabResult = await client.query(
+  `SELECT MAX(no_fab) as max_fab 
+   FROM permintaan_barang 
+   WHERE CAST(no_fab AS TEXT) LIKE $1`,
+  [`${prefix}%`]
+);
 
-    let nextFab;
-    const lastFab = lastFabResult.rows[0].max_fab;
-    if (!lastFab) {
-      nextFab = parseInt(`${prefix}01`);
-    } else {
-      const lastSequence = parseInt(lastFab.toString().slice(-4)); // Ambil 4 digit terakhir jika volume tinggi
-      nextFab = parseInt(`${prefix}${(lastSequence + 1).toString().padStart(2, '0')}`);
-    }
+let nextFab;
+const lastFab = lastFabResult.rows[0].max_fab;
+
+if (!lastFab) {
+  // Jika bulan baru atau belum ada data, mulai dari 260401
+  nextFab = parseInt(`${prefix}01`);
+} else {
+  const lastFabStr = lastFab.toString();
+  
+  // Ambil semua angka SETELAH 4 digit pertama (prefix)
+  // Ini lebih aman daripada slice(-2) jika nanti urutan jadi ratusan
+  const lastSequence = parseInt(lastFabStr.substring(4)); 
+  
+  const nextSequence = lastSequence + 1;
+  
+  // Jika urutan masih 1-9, tambahkan nol di depan (misal: 01, 02)
+  // Jika sudah 10 ke atas, langsung gabungkan (misal: 10, 100)
+  const sequenceStr = nextSequence < 10 ? `0${nextSequence}` : `${nextSequence}`;
+  
+  nextFab = parseInt(`${prefix}${sequenceStr}`);
+}
 
     // --- 3. INSERT ITEMS ---
     for (const item of items) {
@@ -258,5 +273,88 @@ router.put('/fab/:no_fab', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+router.put('/detail/:id_permintaan', async (req, res) => {
+
+  const { role } = req.body;
+
+  if (
+    !['admin', 'logistik']
+      .includes(role)
+  ) {
+
+    return res.status(403).json({
+      success: false,
+      error: 'Tidak punya akses edit'
+    });
+
+  }
+
+  try {
+
+    const {
+      id_barang,
+      qty,
+      id_mesin,
+      operator_maintenance,
+      id_coa
+    } = req.body;
+
+// Jika kosong, pakai data lama
+const finalCoa =
+  id_coa === '' || id_coa === undefined
+    ? null
+    : id_coa;
+
+
+    const result = await pool.query(
+      `
+      UPDATE permintaan_barang
+      SET
+        id_barang = COALESCE($1, id_barang),
+        qty = COALESCE($2, qty),
+        mesin = COALESCE($3, mesin),
+        operator_maintenance = COALESCE($4, operator_maintenance),
+        coa = COALESCE($5, coa),
+        edit_at = CURRENT_TIMESTAMP
+      WHERE id_permintaan = $6
+      `,
+      [
+        id_barang,
+        qty,
+        id_mesin,
+        operator_maintenance,
+        finalCoa,
+        req.params.id_permintaan
+      ]
+    );
+
+    if (result.rowCount === 0) {
+
+      return res.status(404).json({
+        success: false,
+        error: 'Data tidak ditemukan'
+      });
+
+    }
+
+    res.json({
+      success: true,
+      message: 'Berhasil update'
+    });
+
+  } catch (err) {
+
+    console.error('ERROR UPDATE:', err);
+
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+
+  }
+
+});
+
 
 module.exports = router;

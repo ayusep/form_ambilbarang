@@ -139,7 +139,7 @@ useEffect(() => {
               <th style={styles.th}>No</th>
               <th style={styles.th}>Kode</th>
               <th style={styles.th}>Nama Departemen</th>
-              <th style={styles.th}>Limit Bulanan (Rp)</th>
+              {/* <th style={styles.th}>Limit Bulanan (Rp)</th> */}
               {user?.role === 'admin' && <th style={styles.th}>Aksi</th>}
             </tr>
           </thead>
@@ -156,9 +156,9 @@ useEffect(() => {
                   <td style={styles.td}>{indexOfFirstItem + index + 1}</td> 
                   <td style={styles.td}><strong>{item.code_departemen || '-'}</strong></td>
                   <td style={styles.td}>{item.nama_departemen || '-'}</td>
-                  <td style={{ ...styles.td, fontWeight: 'bold', color: '#27ae60' }}>
+                  {/* <td style={{ ...styles.td, fontWeight: 'bold', color: '#27ae60' }}>
                     {Number(item.limit_budget_pinjam || 0).toLocaleString('id-ID')}
-                  </td>
+                  </td> */}
                   {user?.role === 'admin' && (
                     <td style={styles.td}>
                       <button onClick={() => deleteDepartemen(item.id_departemen)} style={styles.btnHapus}>Hapus</button>

@@ -260,47 +260,144 @@ router.get('/teknisi', async (req, res) => {
 });
 
 // 4. UPDATE APPROVAL (PUT)
-router.put('/fab/:no_fab', async (req, res) => {
-  const { no_fab } = req.params;
-  const { status_approval, keterangan } = req.body;
-  try {
-    await pool.query(
-      "UPDATE permintaan_barang SET status_approval = $1, keterangan = $2 WHERE no_fab = $3",
-      [status_approval, keterangan, no_fab]
-    );
-    res.json({ message: "Update success" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// =======================================
+// UPDATE STATUS PER ITEM
+// =======================================
 
-// Endpoint untuk update COA per item barang (spesifik per baris)
-router.put('/detail/:id_permintaan', async (req, res) => {
-  const { id_permintaan } = req.params; // Mengambil ID dari URL
-  const { id_coa } = req.body;        // Mengambil ID COA baru dari body request
+router.put('/status/:id_permintaan', async (req, res) => {
+
+  const { id_permintaan } = req.params;
+
+  const {
+    status_approval,
+    keterangan
+  } = req.body;
 
   try {
-    // Gunakan id_permintaan sebagai klausa WHERE agar tidak ganti se-table
+
     const result = await pool.query(
-      "UPDATE permintaan_barang SET coa = $1 WHERE id_permintaan = $2",
-      [id_coa, id_permintaan]
+      `
+      UPDATE permintaan_barang
+      SET
+        status_approval = $1,
+        keterangan = $2
+      WHERE id_permintaan = $3
+      `,
+      [
+        status_approval,
+        keterangan || null,
+        id_permintaan
+      ]
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Data tidak ditemukan, pastikan id_permintaan benar." 
+
+      return res.status(404).json({
+        success: false,
+        error: 'Data tidak ditemukan'
       });
+
     }
 
-    res.json({ 
-      success: true, 
-      message: `COA untuk ID ${id_permintaan} berhasil diperbarui!` 
+    res.json({
+      success: true,
+      message: 'Status berhasil diupdate'
     });
+
   } catch (err) {
-    console.error("Error update COA detail:", err.message);
-    res.status(500).json({ error: err.message });
+
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+
   }
+
 });
+
+router.put('/detail/:id_permintaan', async (req, res) => {
+
+  const { role } = req.body;
+
+  if (
+    !['admin', 'logistik']
+      .includes(role)
+  ) {
+
+    return res.status(403).json({
+      success: false,
+      error: 'Tidak punya akses edit'
+    });
+
+  }
+
+  try {
+
+    const {
+      id_barang,
+      qty,
+      id_mesin,
+      operator_maintenance,
+      id_coa
+    } = req.body;
+
+// Jika kosong, pakai data lama
+const finalCoa =
+  id_coa === '' || id_coa === undefined
+    ? null
+    : id_coa;
+
+
+    const result = await pool.query(
+      `
+      UPDATE permintaan_barang
+      SET
+        id_barang = COALESCE($1, id_barang),
+        qty = COALESCE($2, qty),
+        mesin = COALESCE($3, mesin),
+        operator_maintenance = COALESCE($4, operator_maintenance),
+        coa = COALESCE($5, coa),
+        edit_at = CURRENT_TIMESTAMP
+      WHERE id_permintaan = $6
+      `,
+      [
+        id_barang,
+        qty,
+        id_mesin,
+        operator_maintenance,
+        finalCoa,
+        req.params.id_permintaan
+      ]
+    );
+
+    if (result.rowCount === 0) {
+
+      return res.status(404).json({
+        success: false,
+        error: 'Data tidak ditemukan'
+      });
+
+    }
+
+    res.json({
+      success: true,
+      message: 'Berhasil update'
+    });
+
+  } catch (err) {
+
+    console.error('ERROR UPDATE:', err);
+
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+
+  }
+
+});
+
 
 module.exports = router;

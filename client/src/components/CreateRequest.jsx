@@ -122,7 +122,7 @@ const CreateRequest = ({ user }) => {
     if (!selectedBarang) return alert("Pilih barang terlebih dahulu!");
     if (!coa) return alert("Pilih COA!");
 
-    const inputQty = parseInt(qty);
+    const inputQty = parseFloat(qty);
     if (isNaN(inputQty) || inputQty <= 0) return alert("Qty tidak valid!");
 
     const harga = parseFloat(selectedBarang.harga_sap);
@@ -142,7 +142,7 @@ const CreateRequest = ({ user }) => {
       harga_sap: harga,
       total_baris: totalHargaBarangBaru,
       id_mesin: selectedMesin ? selectedMesin.id_mesin : null, 
-      nama_mesin: selectedMesin ? selectedMesin.nama_mesin : "-",
+      nama_mesin: selectedMesin ? selectedMesin.nama_mesin : "WORKSHOP",
       operator: operator.trim() || "-",
       id_coa: coa,
       nama_coa: selectedCoaObj ? selectedCoaObj.coa : "N/A"
@@ -238,7 +238,7 @@ const CreateRequest = ({ user }) => {
 
         <div style={{ width: '70px' }}>
           <label style={s.label}>Qty:</label>
-          <input type="number" value={qty} onChange={(e) => setQty(e.target.value)} style={s.inputFAB} />
+          <input type="number" step="0.01" min="0.01" value={qty} onChange={(e) => setQty(e.target.value)} style={s.inputFAB} />
         </div>
 
         <div style={{ flex: 1, position: 'relative', minWidth: '150px' }}>

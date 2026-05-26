@@ -71,13 +71,17 @@ const UserList = () => {
   };
 
 const handleEditClick = (user) => {
-  setCurrentUser({ 
-    ...user, 
-    password: '',
-    // Pastikan id_divisi dan id_departemen terbawa
-    id_divisi: user.id_divisi || '',
-    id_departemen: user.id_departemen || ''
+  console.log("Data user yang akan diedit:", user); // Cek console browser Anda!
+  
+ setCurrentUser({ 
+  ...user, 
+  password: '',
+  
+  // ✅ paksa number + fallback kosong
+    id_divisi: user.id_divisi != null ? Number(user.id_divisi) : '',
+    id_departemen: user.id_departemen != null ? Number(user.id_departemen) : ''
   });
+   
   setIsEditModalOpen(true);
 };
 
@@ -88,9 +92,16 @@ const handleEditClick = (user) => {
       email: currentUser.email,
       no_telp: currentUser.no_telp,
       role: currentUser.role,
-      id_divisi: currentUser.id_divisi,
-      id_departemen: currentUser.id_departemen,
     };
+
+      // ✅ hanya kirim jika ADA nilainya
+  if (currentUser.id_divisi !== '' && currentUser.id_divisi !== null && currentUser.id_divisi !== undefined) {
+    payload.id_divisi = currentUser.id_divisi;
+  }
+
+  if (currentUser.id_departemen !== '' && currentUser.id_departemen !== null && currentUser.id_departemen !== undefined) {
+    payload.id_departemen = currentUser.id_departemen;
+  }
 
     // Hanya kirim password jika diisi (untuk ganti password)
     if (currentUser.password && currentUser.password.trim() !== "") {
@@ -240,23 +251,42 @@ const handleEditClick = (user) => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '12px' }}>
                 <div>
                   <label style={styles.label}>Divisi</label>
-                  <select style={styles.input} value={currentUser.id_divisi || ''}
-                    onChange={(e) => setCurrentUser({...currentUser, id_divisi: e.target.value})}>
-                    <option value="">-- Pilih --</option>
-                    {divisiOptions.map(d => (
-                      <option key={d.id_divisi} value={d.id_divisi}>{d.nama_divisi}</option>
-                    ))}
-                  </select>
+                  {/* Dropdown Divisi */}
+<select 
+  style={styles.input} 
+  value={currentUser.id_divisi ?? ''}
+  onChange={(e) => {
+    // Simpan sebagai number jika input bukan string kosong
+    const val = e.target.value === '' ? '' : Number(e.target.value);
+    setCurrentUser({...currentUser, id_divisi: val});
+  }}
+>
+  <option value="">-- Pilih --</option>
+  {divisiOptions.map(d => (
+    // Samakan tipe data value dengan yang ada di state
+    <option key={d.id_divisi} value={Number(d.id_divisi)}>
+      {d.nama_divisi}
+    </option>
+  ))}
+</select>
                 </div>
                 <div>
                   <label style={styles.label}>Departemen</label>
-                  <select style={styles.input} value={currentUser.id_departemen || ''}
-                    onChange={(e) => setCurrentUser({...currentUser, id_departemen: e.target.value})}>
-                    <option value="">-- Pilih --</option>
-                    {deptOptions.map(d => (
-                      <option key={d.id_departemen} value={d.id_departemen}>{d.nama_departemen}</option>
-                    ))}
-                  </select>
+                  <select 
+  style={styles.input} 
+  value={currentUser.id_departemen ?? ''}
+  onChange={(e) => {
+    const val = e.target.value === '' ? '' : Number(e.target.value);
+    setCurrentUser({...currentUser, id_departemen: val});
+  }}
+>
+  <option value="">-- Pilih --</option>
+  {deptOptions.map(d => (
+    <option key={d.id_departemen} value={Number(d.id_departemen)}>
+      {d.nama_departemen}
+    </option>
+  ))}
+</select>
                 </div>
               </div>
 

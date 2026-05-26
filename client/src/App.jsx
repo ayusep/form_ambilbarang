@@ -11,6 +11,7 @@ import Login from './components/Login';
 import UserList from './components/UserList';
 import Divisi from './components/Divisi'; 
 import Budgeting from './components/Budgeting';
+import ExportExcel from './components/ExportExcel';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -202,8 +203,16 @@ function App() {
     setReportFilter({ bulan: "", tahun: "" });
     setActiveMenu("laporan");
   }} style={menuStyle("laporan")}>
-    📊 Data Permintaan Barang
+    📊 Data FAB
   </div>
+
+<div 
+  onClick={() => setActiveMenu("export_excel")} 
+  style={menuStyle("export_excel")}
+>
+  📥 Export Excel
+</div>
+
 
   {/* LOGOUT tepat di bawah laporan */}
   <button
@@ -264,6 +273,7 @@ function App() {
                </div>
              )
            )}
+           {activeMenu === "export_excel" && (<ExportExcel />)}
         </div>
       </div>
     </div>

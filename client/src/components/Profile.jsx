@@ -110,7 +110,7 @@ const Profile = ({ user }) => {
               <label style={pStyles.label}>Email</label>
               <input 
                 name="email"
-                type="email"
+                type="text"
                 style={pStyles.input} 
                 value={formData.email} 
                 onChange={handleChange} 

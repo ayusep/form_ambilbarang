@@ -151,12 +151,16 @@ const Barang = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
+          {user && user.role === 'admin' && (
+            <>
           <button onClick={() => setShowModal(true)} style={s.btnAdd}>➕ Tambah</button>
           <button onClick={downloadTemplate} style={s.btnDownload}>📥 Template</button>
           <label style={importing ? s.btnImportDisabled : s.btnImport}>
             {importing ? '⏳...' : '📤 Import'}
             <input type="file" accept=".xlsx, .xls" onChange={handleImportExcel} hidden />
           </label>
+          </>
+          )}
           <input
             type="text"
             placeholder="Cari..."
